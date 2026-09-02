@@ -260,6 +260,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
       can_see_message: {
         Args: { _message_id: string; _user_id: string }
         Returns: boolean
