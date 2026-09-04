@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      birthday_cards: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          recipient_id: string
+          sender_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          recipient_id: string
+          sender_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          recipient_id?: string
+          sender_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       conversation_members: {
         Row: {
           conversation_id: string
@@ -70,6 +97,33 @@ export type Database = {
           id?: string
           is_group?: boolean
           name?: string | null
+        }
+        Relationships: []
+      }
+      custom_themes: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          shared: boolean
+          vars: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          shared?: boolean
+          vars?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          shared?: boolean
+          vars?: Json
         }
         Relationships: []
       }
@@ -189,6 +243,36 @@ export type Database = {
           },
         ]
       }
+      notification_settings: {
+        Row: {
+          desktop: boolean
+          enabled: boolean
+          quiet_hours: Json
+          sound: string
+          updated_at: string
+          user_id: string
+          volume: number
+        }
+        Insert: {
+          desktop?: boolean
+          enabled?: boolean
+          quiet_hours?: Json
+          sound?: string
+          updated_at?: string
+          user_id: string
+          volume?: number
+        }
+        Update: {
+          desktop?: boolean
+          enabled?: boolean
+          quiet_hours?: Json
+          sound?: string
+          updated_at?: string
+          user_id?: string
+          volume?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           age: number | null
@@ -231,6 +315,36 @@ export type Database = {
           theme?: string
           updated_at?: string
           username?: string
+        }
+        Relationships: []
+      }
+      stickers: {
+        Row: {
+          created_at: string
+          id: string
+          media_url: string
+          name: string
+          owner_id: string
+          pack: string
+          shared: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          media_url: string
+          name?: string
+          owner_id: string
+          pack?: string
+          shared?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          media_url?: string
+          name?: string
+          owner_id?: string
+          pack?: string
+          shared?: boolean
         }
         Relationships: []
       }
