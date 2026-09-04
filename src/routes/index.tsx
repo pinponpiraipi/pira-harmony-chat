@@ -87,6 +87,9 @@ function HomePage() {
   const others = visible.filter((f) => !f.favorite);
   const birthdays = visible.filter((f) => isBirthdayToday(f.profile.birthday));
 
+  if (!session) return null;
+
+
   return (
     <AppShell>
       <div className="space-y-3">
