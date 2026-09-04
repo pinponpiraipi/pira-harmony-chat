@@ -37,7 +37,8 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const { session, profile, refresh } = usePira();
+  const { session, profile, loading, refresh } = usePira();
+
   const navigate = useNavigate();
   const [friends, setFriends] = useState<FriendEntry[]>([]);
   const [groups, setGroups] = useState<ChatSummary[]>([]);
@@ -58,8 +59,13 @@ function HomePage() {
   }, [load]);
 
   useEffect(() => {
+    if (!loading && !session) void navigate({ to: "/auth" });
+  }, [loading, session, navigate]);
+
+  useEffect(() => {
     setStatus(profile?.status_message ?? "");
   }, [profile?.status_message]);
+
 
   async function saveStatus() {
     if (!session) return;
@@ -80,6 +86,9 @@ function HomePage() {
   const favorites = visible.filter((f) => f.favorite);
   const others = visible.filter((f) => !f.favorite);
   const birthdays = visible.filter((f) => isBirthdayToday(f.profile.birthday));
+
+  if (!session) return null;
+
 
   return (
     <AppShell>
