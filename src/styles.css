@@ -196,3 +196,56 @@
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
+
+/* User-made palettes: values come from --pira-custom-* set at runtime. */
+[data-theme="custom"] {
+  --scene: linear-gradient(
+    160deg,
+    var(--pira-custom-bg, #101827) 0%,
+    var(--pira-custom-accent, #22c55e) 140%
+  );
+  --background: var(--pira-custom-bg, #101827);
+  --foreground: var(--pira-custom-text, #f8fafc);
+  --card: color-mix(in oklab, var(--pira-custom-panel, #ffffff) 18%, transparent);
+  --card-foreground: var(--pira-custom-text, #f8fafc);
+  --primary: var(--pira-custom-accent, #22c55e);
+  --primary-foreground: var(--pira-custom-bg, #101827);
+  --secondary: color-mix(in oklab, var(--pira-custom-panel, #ffffff) 20%, transparent);
+  --secondary-foreground: var(--pira-custom-text, #f8fafc);
+  --muted: color-mix(in oklab, var(--pira-custom-panel, #ffffff) 14%, transparent);
+  --muted-foreground: color-mix(in oklab, var(--pira-custom-text, #f8fafc) 72%, transparent);
+  --accent: var(--pira-custom-accent, #22c55e);
+  --accent-foreground: var(--pira-custom-bg, #101827);
+  --border: color-mix(in oklab, var(--pira-custom-panel, #ffffff) 24%, transparent);
+  --input: color-mix(in oklab, var(--pira-custom-panel, #ffffff) 20%, transparent);
+  --ring: var(--pira-custom-accent, #22c55e);
+  --bubble-me: var(--pira-custom-accent, #22c55e);
+  --bubble-me-foreground: var(--pira-custom-bg, #101827);
+  --bubble-other: color-mix(in oklab, var(--pira-custom-panel, #ffffff) 20%, transparent);
+  --bubble-other-foreground: var(--pira-custom-text, #f8fafc);
+  --glass: color-mix(in oklab, var(--pira-custom-panel, #ffffff) 18%, transparent);
+}
+
+/* Birthday balloons */
+@keyframes pira-float {
+  0% {
+    transform: translateY(20%) rotate(-4deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-130vh) rotate(6deg);
+    opacity: 0;
+  }
+}
+
+@utility pira-balloon {
+  position: fixed;
+  bottom: -60px;
+  font-size: 34px;
+  animation: pira-float 9s linear infinite;
+  pointer-events: none;
+  z-index: 30;
+}
