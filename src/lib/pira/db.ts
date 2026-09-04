@@ -84,11 +84,16 @@ export async function addFriend(userId: string, friendId: string) {
 }
 
 export async function updateFriend(id: string, patch: Partial<FriendEntry>) {
-  const update: Record<string, unknown> = {};
-  if (patch.nickname !== undefined) update["nickname"] = patch.nickname;
-  if (patch.favorite !== undefined) update["favorite"] = patch.favorite;
-  if (patch.hidden !== undefined) update["hidden"] = patch.hidden;
-  if (patch.blocked !== undefined) update["blocked"] = patch.blocked;
+  const update: {
+    nickname?: string | null;
+    favorite?: boolean;
+    hidden?: boolean;
+    blocked?: boolean;
+  } = {};
+  if (patch.nickname !== undefined) update.nickname = patch.nickname;
+  if (patch.favorite !== undefined) update.favorite = patch.favorite;
+  if (patch.hidden !== undefined) update.hidden = patch.hidden;
+  if (patch.blocked !== undefined) update.blocked = patch.blocked;
   const { error } = await supabase.from("friendships").update(update).eq("id", id);
   if (error) throw error;
 }
