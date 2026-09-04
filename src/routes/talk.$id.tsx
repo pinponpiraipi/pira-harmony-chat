@@ -177,7 +177,7 @@ function TalkPage() {
                     {m.deleted_at ? (
                       <span className="italic opacity-70">メッセージの送信を取り消しました</span>
                     ) : m.kind === "image" ? (
-                      <StoredImage path={m.media_url} className="max-h-64 rounded-xl" />
+                      <StoredImage path={m.media_url} alt="送信された写真" className="max-h-64 rounded-xl" />
                     ) : m.kind === "video" ? (
                       <StoredVideo path={m.media_url} className="max-h-64 rounded-xl" />
                     ) : (
