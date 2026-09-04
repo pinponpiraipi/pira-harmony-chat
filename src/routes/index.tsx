@@ -59,8 +59,13 @@ function HomePage() {
   }, [load]);
 
   useEffect(() => {
+    if (!loading && !session) void navigate({ to: "/auth" });
+  }, [loading, session, navigate]);
+
+  useEffect(() => {
     setStatus(profile?.status_message ?? "");
   }, [profile?.status_message]);
+
 
   async function saveStatus() {
     if (!session) return;
