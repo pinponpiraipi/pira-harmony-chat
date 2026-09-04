@@ -3,9 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePira, usernameToEmail } from "@/lib/pira/session";
 import { GlassPanel, PiraButton, PiraInput } from "@/components/pira/ui";
-import piraLogo from "@/assets/pira-logo.png.asset.json";
-
-const logo = piraLogo.url;
+import { PIRA_LOGO_URL as logo } from "@/lib/pira/brand";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
