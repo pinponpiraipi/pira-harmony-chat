@@ -10,18 +10,32 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AddRouteImport } from './routes/add'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as TalksRouteImport } from './routes/talks'
+import { Route as TalkIdRouteImport } from './routes/talk.$id'
+import { Route as UIdRouteImport } from './routes/u.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AddRoute = AddRouteImport.update({
+  id: '/add',
+  path: '/add',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SetupRoute = SetupRouteImport.update({
@@ -34,39 +48,90 @@ const TalksRoute = TalksRouteImport.update({
   path: '/talks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TalkIdRoute = TalkIdRouteImport.update({
+  id: '/talk/$id',
+  path: '/talk/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UIdRoute = UIdRouteImport.update({
+  id: '/u/$id',
+  path: '/u/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/add': typeof AddRoute
   '/auth': typeof AuthRoute
+  '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/talks': typeof TalksRoute
+  '/talk/$id': typeof TalkIdRoute
+  '/u/$id': typeof UIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/add': typeof AddRoute
   '/auth': typeof AuthRoute
+  '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/talks': typeof TalksRoute
+  '/talk/$id': typeof TalkIdRoute
+  '/u/$id': typeof UIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/add': typeof AddRoute
   '/auth': typeof AuthRoute
+  '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/talks': typeof TalksRoute
+  '/talk/$id': typeof TalkIdRoute
+  '/u/$id': typeof UIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/setup' | '/talks'
+  fullPaths:
+    | '/'
+    | '/add'
+    | '/auth'
+    | '/settings'
+    | '/setup'
+    | '/talks'
+    | '/talk/$id'
+    | '/u/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/setup' | '/talks'
-  id: '__root__' | '/' | '/auth' | '/setup' | '/talks'
+  to:
+    | '/'
+    | '/add'
+    | '/auth'
+    | '/settings'
+    | '/setup'
+    | '/talks'
+    | '/talk/$id'
+    | '/u/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/add'
+    | '/auth'
+    | '/settings'
+    | '/setup'
+    | '/talks'
+    | '/talk/$id'
+    | '/u/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AddRoute: typeof AddRoute
   AuthRoute: typeof AuthRoute
+  SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
   TalksRoute: typeof TalksRoute
+  TalkIdRoute: typeof TalkIdRoute
+  UIdRoute: typeof UIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -78,11 +143,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/add': {
+      id: '/add'
+      path: '/add'
+      fullPath: '/add'
+      preLoaderRoute: typeof AddRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/setup': {
@@ -99,14 +178,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TalksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/talk/$id': {
+      id: '/talk/$id'
+      path: '/talk/$id'
+      fullPath: '/talk/$id'
+      preLoaderRoute: typeof TalkIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/u/$id': {
+      id: '/u/$id'
+      path: '/u/$id'
+      fullPath: '/u/$id'
+      preLoaderRoute: typeof UIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AddRoute: AddRoute,
   AuthRoute: AuthRoute,
+  SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
   TalksRoute: TalksRoute,
+  TalkIdRoute: TalkIdRoute,
+  UIdRoute: UIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
