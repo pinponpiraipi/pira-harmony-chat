@@ -37,7 +37,8 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const { session, profile, refresh } = usePira();
+  const { session, profile, loading, refresh } = usePira();
+
   const navigate = useNavigate();
   const [friends, setFriends] = useState<FriendEntry[]>([]);
   const [groups, setGroups] = useState<ChatSummary[]>([]);
