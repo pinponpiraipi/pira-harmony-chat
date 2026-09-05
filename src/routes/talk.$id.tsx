@@ -280,7 +280,7 @@ function TalkPage() {
               }
             }}
           />
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               ref={fileRef}
               type="file"
@@ -295,10 +295,44 @@ function TalkPage() {
             <PiraButton variant="soft" onClick={() => fileRef.current?.click()}>
               <ImageIcon size={14} /> 写真・動画
             </PiraButton>
-            <PiraButton disabled={busy || !draft.trim()} onClick={() => void send()}>
+            <PiraButton variant="soft" onClick={() => setShowStickers((v) => !v)}>
+              <Smile size={14} /> スタンプ
+            </PiraButton>
+            <PiraButton
+              variant="soft"
+              disabled={busy}
+              onClick={async () => {
+                if (!session) return;
+                setBusy(true);
+                try {
+                  await sendMessage({
+                    conversationId: id,
+                    senderId: session.user.id,
+                    kind: "card",
+                    body: draft.trim() || null,
+                  });
+                  setDraft("");
+                  await load();
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              <Cake size={14} /> お祝いカード
+            </PiraButton>
+            <PiraButton
+              className="ml-auto"
+              disabled={busy || !draft.trim()}
+              onClick={() => void send()}
+            >
               <Send size={14} /> 送信
             </PiraButton>
           </div>
+          {showStickers && (
+            <div className="glass-soft rounded-xl">
+              <StickerPicker onPick={(s) => void sendSticker(s.media_url)} />
+            </div>
+          )}
         </GlassPanel>
       </div>
     </AppShell>
