@@ -142,7 +142,26 @@ function TalkPage() {
       await load();
     } finally {
       setBusy(false);
+  }
+
+  async function sendSticker(mediaUrl: string) {
+    if (!session || busy) return;
+    setBusy(true);
+    try {
+      await sendMessage({
+        conversationId: id,
+        senderId: session.user.id,
+        kind: "sticker",
+        mediaUrl,
+        replyTo: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+      setShowStickers(false);
+      await load();
+    } finally {
+      setBusy(false);
     }
+  }
   }
 
   return (
