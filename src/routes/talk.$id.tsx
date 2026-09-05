@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Image as ImageIcon, Send, Trash2, Reply, X } from "lucide-react";
+import { Image as ImageIcon, Send, Trash2, Reply, X, Smile, Cake } from "lucide-react";
 import { AppShell } from "@/components/pira/shell";
 import {
   Avatar,
@@ -10,6 +10,7 @@ import {
   StoredImage,
   StoredVideo,
 } from "@/components/pira/ui";
+import { StickerPicker } from "@/components/pira/stickers";
 import { usePira } from "@/lib/pira/session";
 import {
   deleteMessage,
@@ -53,6 +54,7 @@ function TalkPage() {
   const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showStickers, setShowStickers] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -140,7 +142,26 @@ function TalkPage() {
       await load();
     } finally {
       setBusy(false);
+  }
+
+  async function sendSticker(mediaUrl: string) {
+    if (!session || busy) return;
+    setBusy(true);
+    try {
+      await sendMessage({
+        conversationId: id,
+        senderId: session.user.id,
+        kind: "sticker",
+        mediaUrl,
+        replyTo: replyTo?.id ?? null,
+      });
+      setReplyTo(null);
+      setShowStickers(false);
+      await load();
+    } finally {
+      setBusy(false);
     }
+  }
   }
 
   return (
@@ -180,6 +201,18 @@ function TalkPage() {
                       <StoredImage path={m.media_url} alt="送信された写真" className="max-h-64 rounded-xl" />
                     ) : m.kind === "video" ? (
                       <StoredVideo path={m.media_url} className="max-h-64 rounded-xl" />
+                    ) : m.kind === "sticker" ? (
+                      <StoredImage
+                        path={m.media_url}
+                        alt="スタンプ"
+                        className="h-28 w-28 object-contain"
+                      />
+                    ) : m.kind === "card" ? (
+                      <span className="flex flex-col items-center gap-1">
+                        <span className="text-2xl">🎂🎈🎉</span>
+                        <span className="text-xs font-bold">お誕生日おめでとう！</span>
+                        {m.body && <span>{m.body}</span>}
+                      </span>
                     ) : (
                       m.body
                     )}
@@ -247,7 +280,7 @@ function TalkPage() {
               }
             }}
           />
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               ref={fileRef}
               type="file"
@@ -262,10 +295,44 @@ function TalkPage() {
             <PiraButton variant="soft" onClick={() => fileRef.current?.click()}>
               <ImageIcon size={14} /> 写真・動画
             </PiraButton>
-            <PiraButton disabled={busy || !draft.trim()} onClick={() => void send()}>
+            <PiraButton variant="soft" onClick={() => setShowStickers((v) => !v)}>
+              <Smile size={14} /> スタンプ
+            </PiraButton>
+            <PiraButton
+              variant="soft"
+              disabled={busy}
+              onClick={async () => {
+                if (!session) return;
+                setBusy(true);
+                try {
+                  await sendMessage({
+                    conversationId: id,
+                    senderId: session.user.id,
+                    kind: "card",
+                    body: draft.trim() || null,
+                  });
+                  setDraft("");
+                  await load();
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              <Cake size={14} /> お祝いカード
+            </PiraButton>
+            <PiraButton
+              className="ml-auto"
+              disabled={busy || !draft.trim()}
+              onClick={() => void send()}
+            >
               <Send size={14} /> 送信
             </PiraButton>
           </div>
+          {showStickers && (
+            <div className="glass-soft rounded-xl">
+              <StickerPicker onPick={(s) => void sendSticker(s.media_url)} />
+            </div>
+          )}
         </GlassPanel>
       </div>
     </AppShell>
