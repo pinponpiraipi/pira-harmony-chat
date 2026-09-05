@@ -54,6 +54,7 @@ function TalkPage() {
   const [draft, setDraft] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showStickers, setShowStickers] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
