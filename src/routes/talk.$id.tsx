@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Image as ImageIcon, Send, Trash2, Reply, X } from "lucide-react";
+import { Image as ImageIcon, Send, Trash2, Reply, X, Smile, Cake } from "lucide-react";
 import { AppShell } from "@/components/pira/shell";
 import {
   Avatar,
@@ -10,6 +10,7 @@ import {
   StoredImage,
   StoredVideo,
 } from "@/components/pira/ui";
+import { StickerPicker } from "@/components/pira/stickers";
 import { usePira } from "@/lib/pira/session";
 import {
   deleteMessage,
