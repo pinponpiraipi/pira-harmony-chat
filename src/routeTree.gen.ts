@@ -14,6 +14,7 @@ import { Route as AddRouteImport } from './routes/add'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SetupRouteImport } from './routes/setup'
+import { Route as StickersRouteImport } from './routes/stickers'
 import { Route as TalksRouteImport } from './routes/talks'
 import { Route as TalkIdRouteImport } from './routes/talk.$id'
 import { Route as UIdRouteImport } from './routes/u.$id'
@@ -43,6 +44,11 @@ const SetupRoute = SetupRouteImport.update({
   path: '/setup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StickersRoute = StickersRouteImport.update({
+  id: '/stickers',
+  path: '/stickers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TalksRoute = TalksRouteImport.update({
   id: '/talks',
   path: '/talks',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/stickers': typeof StickersRoute
   '/talks': typeof TalksRoute
   '/talk/$id': typeof TalkIdRoute
   '/u/$id': typeof UIdRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/stickers': typeof StickersRoute
   '/talks': typeof TalksRoute
   '/talk/$id': typeof TalkIdRoute
   '/u/$id': typeof UIdRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
+  '/stickers': typeof StickersRoute
   '/talks': typeof TalksRoute
   '/talk/$id': typeof TalkIdRoute
   '/u/$id': typeof UIdRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/settings'
     | '/setup'
+    | '/stickers'
     | '/talks'
     | '/talk/$id'
     | '/u/$id'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/settings'
     | '/setup'
+    | '/stickers'
     | '/talks'
     | '/talk/$id'
     | '/u/$id'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/settings'
     | '/setup'
+    | '/stickers'
     | '/talks'
     | '/talk/$id'
     | '/u/$id'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
+  StickersRoute: typeof StickersRoute
   TalksRoute: typeof TalksRoute
   TalkIdRoute: typeof TalkIdRoute
   UIdRoute: typeof UIdRoute
@@ -171,6 +184,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SetupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/stickers': {
+      id: '/stickers'
+      path: '/stickers'
+      fullPath: '/stickers'
+      preLoaderRoute: typeof StickersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/talks': {
       id: '/talks'
       path: '/talks'
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
+  StickersRoute: StickersRoute,
   TalksRoute: TalksRoute,
   TalkIdRoute: TalkIdRoute,
   UIdRoute: UIdRoute,

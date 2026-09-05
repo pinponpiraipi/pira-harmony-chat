@@ -238,3 +238,19 @@ export async function adminListConversations() {
     .limit(100);
   return data ?? [];
 }
+
+/** Admin-only: read every message of any conversation (allowed by RLS for admins). */
+export async function adminListMessages(conversationId: string) {
+  const { data } = await supabase
+    .from("messages")
+    .select("*")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true })
+    .limit(300);
+  return data ?? [];
+}
+
+export async function adminDeleteMessage(id: string) {
+  const { error } = await supabase.from("messages").delete().eq("id", id);
+  if (error) throw error;
+}
