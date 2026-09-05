@@ -201,6 +201,18 @@ function TalkPage() {
                       <StoredImage path={m.media_url} alt="送信された写真" className="max-h-64 rounded-xl" />
                     ) : m.kind === "video" ? (
                       <StoredVideo path={m.media_url} className="max-h-64 rounded-xl" />
+                    ) : m.kind === "sticker" ? (
+                      <StoredImage
+                        path={m.media_url}
+                        alt="スタンプ"
+                        className="h-28 w-28 object-contain"
+                      />
+                    ) : m.kind === "card" ? (
+                      <span className="flex flex-col items-center gap-1">
+                        <span className="text-2xl">🎂🎈🎉</span>
+                        <span className="text-xs font-bold">お誕生日おめでとう！</span>
+                        {m.body && <span>{m.body}</span>}
+                      </span>
                     ) : (
                       m.body
                     )}
