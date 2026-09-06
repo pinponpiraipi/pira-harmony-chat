@@ -43,7 +43,8 @@ export function AppShell({
   title?: string;
   right?: React.ReactNode;
 }) {
-  const { device, setDevice, loading, session, profile } = usePira();
+  const { device, setDevice, loading, session, profile, isAdmin } = usePira();
+  const nav = isAdmin ? [...BASE_NAV, ADMIN_NAV] : [...BASE_NAV];
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -89,7 +90,7 @@ export function AppShell({
         <div className={isMobile ? "flex-1" : "flex flex-1 gap-2"}>
           {!isMobile && (
             <nav className="glass flex w-48 shrink-0 flex-col gap-1 rounded-2xl p-2">
-              {NAV.map((item) => (
+              {nav.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
@@ -107,7 +108,7 @@ export function AppShell({
 
         {isMobile && (
           <nav className="glass fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-[420px] items-center justify-around rounded-t-2xl px-2 py-2">
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
