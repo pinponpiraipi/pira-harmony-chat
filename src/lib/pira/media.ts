@@ -43,7 +43,5 @@ export async function shrinkImage(
   canvas.height = Math.round(bitmap.height * scale);
   const ctx = canvas.getContext("2d")!;
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  return await new Promise((resolve) =>
-    canvas.toBlob((blob) => resolve(blob!), "image/png", 0.92),
-  );
+  return await new Promise((resolve) => canvas.toBlob((blob) => resolve(blob!), mime, quality));
 }
