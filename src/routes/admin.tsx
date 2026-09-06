@@ -60,7 +60,12 @@ function AdminPage() {
     setMessages((await adminListMessages(id)) as Message[]);
   }
 
-  if (loading) return <AppShell title="管理者" />;
+  if (loading)
+    return (
+      <AppShell title="管理者">
+        <GlassPanel className="p-6 text-sm text-muted-foreground">読み込み中…</GlassPanel>
+      </AppShell>
+    );
 
   if (!isAdmin) {
     return (

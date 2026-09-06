@@ -29,8 +29,13 @@ export async function resolveMedia(path: string | null | undefined) {
   return data.signedUrl;
 }
 
-/** Shrink an image file to a square-ish data URL (used for avatars/stickers). */
-export async function shrinkImage(file: File | Blob, max = 512): Promise<Blob> {
+/** Shrink an image file, keeping its aspect ratio (used for avatars/covers/stickers). */
+export async function shrinkImage(
+  file: File | Blob,
+  max = 512,
+  mime: "image/png" | "image/webp" | "image/jpeg" = "image/png",
+  quality = 0.9,
+): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
@@ -38,7 +43,5 @@ export async function shrinkImage(file: File | Blob, max = 512): Promise<Blob> {
   canvas.height = Math.round(bitmap.height * scale);
   const ctx = canvas.getContext("2d")!;
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  return await new Promise((resolve) =>
-    canvas.toBlob((blob) => resolve(blob!), "image/png", 0.92),
-  );
+  return await new Promise((resolve) => canvas.toBlob((blob) => resolve(blob!), mime, quality));
 }

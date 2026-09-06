@@ -1,5 +1,14 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Home, MessageCircle, UserPlus, Settings, Monitor, Smartphone } from "lucide-react";
+import {
+  Home,
+  MessageCircle,
+  UserPlus,
+  Settings,
+  Monitor,
+  Smartphone,
+  Smile,
+  Shield,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { usePira } from "@/lib/pira/session";
 import { jstNowParts } from "@/lib/pira/format";
@@ -14,12 +23,15 @@ export function PiraClock() {
   return <span className="font-display text-xs text-muted-foreground tabular-nums">{now}</span>;
 }
 
-const NAV = [
+const BASE_NAV = [
   { to: "/", label: "ホーム", icon: Home },
   { to: "/talks", label: "トーク", icon: MessageCircle },
-  { to: "/add", label: "友だち追加", icon: UserPlus },
+  { to: "/add", label: "友だち", icon: UserPlus },
+  { to: "/stickers", label: "スタンプ", icon: Smile },
   { to: "/settings", label: "設定", icon: Settings },
 ] as const;
+
+const ADMIN_NAV = { to: "/admin", label: "管理者", icon: Shield } as const;
 
 /** App frame: switches between a phone-sized column and a wide desktop layout. */
 export function AppShell({
@@ -31,7 +43,8 @@ export function AppShell({
   title?: string;
   right?: React.ReactNode;
 }) {
-  const { device, setDevice, loading, session, profile } = usePira();
+  const { device, setDevice, loading, session, profile, isAdmin } = usePira();
+  const nav = isAdmin ? [...BASE_NAV, ADMIN_NAV] : [...BASE_NAV];
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -77,7 +90,7 @@ export function AppShell({
         <div className={isMobile ? "flex-1" : "flex flex-1 gap-2"}>
           {!isMobile && (
             <nav className="glass flex w-48 shrink-0 flex-col gap-1 rounded-2xl p-2">
-              {NAV.map((item) => (
+              {nav.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
@@ -95,7 +108,7 @@ export function AppShell({
 
         {isMobile && (
           <nav className="glass fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-[420px] items-center justify-around rounded-t-2xl px-2 py-2">
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <Link
                 key={item.to}
                 to={item.to}

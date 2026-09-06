@@ -11,6 +11,7 @@ import {
   StoredVideo,
 } from "@/components/pira/ui";
 import { StickerPicker } from "@/components/pira/stickers";
+import { CallCenter } from "@/components/pira/call";
 import { usePira } from "@/lib/pira/session";
 import {
   deleteMessage,
@@ -142,6 +143,7 @@ function TalkPage() {
       await load();
     } finally {
       setBusy(false);
+    }
   }
 
   async function sendSticker(mediaUrl: string) {
@@ -162,10 +164,14 @@ function TalkPage() {
       setBusy(false);
     }
   }
-  }
 
   return (
-    <AppShell title={title}>
+    <AppShell
+      title={title}
+      right={
+        session ? <CallCenter conversationId={id} selfId={session.user.id} title={title} /> : null
+      }
+    >
       <div className="space-y-3">
         <GlassPanel className="pira-scroll max-h-[60vh] space-y-3 overflow-y-auto p-3">
           {messages.length === 0 && (
