@@ -1,5 +1,14 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Home, MessageCircle, UserPlus, Settings, Monitor, Smartphone } from "lucide-react";
+import {
+  Home,
+  MessageCircle,
+  UserPlus,
+  Settings,
+  Monitor,
+  Smartphone,
+  Smile,
+  Shield,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { usePira } from "@/lib/pira/session";
 import { jstNowParts } from "@/lib/pira/format";
