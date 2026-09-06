@@ -23,12 +23,15 @@ export function PiraClock() {
   return <span className="font-display text-xs text-muted-foreground tabular-nums">{now}</span>;
 }
 
-const NAV = [
+const BASE_NAV = [
   { to: "/", label: "ホーム", icon: Home },
   { to: "/talks", label: "トーク", icon: MessageCircle },
-  { to: "/add", label: "友だち追加", icon: UserPlus },
+  { to: "/add", label: "友だち", icon: UserPlus },
+  { to: "/stickers", label: "スタンプ", icon: Smile },
   { to: "/settings", label: "設定", icon: Settings },
 ] as const;
+
+const ADMIN_NAV = { to: "/admin", label: "管理者", icon: Shield } as const;
 
 /** App frame: switches between a phone-sized column and a wide desktop layout. */
 export function AppShell({
