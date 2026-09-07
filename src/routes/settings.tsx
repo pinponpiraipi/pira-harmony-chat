@@ -152,7 +152,7 @@ function SettingsPage() {
             onClick={() =>
               void supabase.auth.signOut().then(async () => {
                 await refresh();
-                void navigate({ to: "/auth" });
+                void navigate({ to: "/auth", replace: true });
               })
             }
           >

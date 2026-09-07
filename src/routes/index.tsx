@@ -59,7 +59,7 @@ function HomePage() {
   }, [load]);
 
   useEffect(() => {
-    if (!loading && !session) void navigate({ to: "/auth" });
+    if (!loading && !session) void navigate({ to: "/auth", replace: true });
   }, [loading, session, navigate]);
 
   useEffect(() => {
