@@ -94,6 +94,7 @@ export function AppShell({
                 <Link
                   key={item.to}
                   to={item.to}
+                  replace
                   className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground [&.active]:bg-primary [&.active]:text-primary-foreground"
                   activeOptions={{ exact: item.to === "/" }}
                 >
@@ -112,6 +113,7 @@ export function AppShell({
               <Link
                 key={item.to}
                 to={item.to}
+                replace
                 className="flex flex-col items-center gap-0.5 rounded-xl px-3 py-1 text-[10px] font-semibold text-muted-foreground [&.active]:text-primary"
                 activeOptions={{ exact: item.to === "/" }}
               >

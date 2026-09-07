@@ -131,6 +131,7 @@ export type NotifySettings = {
   volume: number;
   desktop: boolean;
   quiet_hours: QuietWindow[];
+  sound_url: string | null;
 };
 
 export const DEFAULT_NOTIFY: Omit<NotifySettings, "user_id"> = {
@@ -139,6 +140,7 @@ export const DEFAULT_NOTIFY: Omit<NotifySettings, "user_id"> = {
   volume: 0.6,
   desktop: true,
   quiet_hours: [],
+  sound_url: null,
 };
 
 export async function getNotifySettings(userId: string): Promise<NotifySettings> {
@@ -155,6 +157,7 @@ export async function getNotifySettings(userId: string): Promise<NotifySettings>
     volume: Number(data.volume),
     desktop: data.desktop,
     quiet_hours: (data.quiet_hours ?? []) as QuietWindow[],
+    sound_url: (data as { sound_url?: string | null }).sound_url ?? null,
   };
 }
 
@@ -167,10 +170,27 @@ export async function saveNotifySettings(s: NotifySettings) {
       volume: s.volume,
       desktop: s.desktop,
       quiet_hours: s.quiet_hours,
+      sound_url: s.sound_url,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id" },
   );
+  if (error) throw error;
+}
+
+/* ---------------- global (admin) settings ---------------- */
+
+/** Quiet hours set by an admin; enforced for every account. */
+export async function getGlobalQuietHours(): Promise<QuietWindow[]> {
+  const { data } = await supabase.from("app_settings").select("quiet_hours").eq("id", true).maybeSingle();
+  return ((data?.quiet_hours ?? []) as QuietWindow[]) ?? [];
+}
+
+export async function saveGlobalQuietHours(windows: QuietWindow[]) {
+  const { error } = await supabase
+    .from("app_settings")
+    .update({ quiet_hours: windows })
+    .eq("id", true);
   if (error) throw error;
 }
 
@@ -219,7 +239,13 @@ export async function adminSetBanned(id: string, banned: boolean) {
 
 export async function adminUpdateProfile(
   id: string,
-  patch: { display_name?: string; status_message?: string | null },
+  patch: {
+    display_name?: string;
+    username?: string;
+    status_message?: string | null;
+    avatar_url?: string | null;
+    cover_url?: string | null;
+  },
 ) {
   const { error } = await supabase.from("profiles").update(patch).eq("id", id);
   if (error) throw error;

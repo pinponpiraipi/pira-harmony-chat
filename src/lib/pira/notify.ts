@@ -1,4 +1,5 @@
 import type { NotifySettings, QuietWindow } from "./extras";
+import { resolveMedia } from "./media";
 
 export const SOUNDS = [
   { id: "pop", label: "ポップ", notes: [880, 1320] },
@@ -43,6 +44,23 @@ export function playSound(soundId: string, volume = 0.6) {
   });
 }
 
+let customAudio: HTMLAudioElement | null = null;
+let customSrcPath: string | null = null;
+
+/** Plays a sound file the user uploaded from their own computer. */
+export async function playCustomSound(path: string, volume = 0.6) {
+  if (typeof window === "undefined") return;
+  if (customSrcPath !== path || !customAudio) {
+    const url = await resolveMedia(path);
+    if (!url) return;
+    customAudio = new Audio(url);
+    customSrcPath = path;
+  }
+  customAudio.volume = Math.min(1, Math.max(0, volume));
+  customAudio.currentTime = 0;
+  void customAudio.play().catch(() => undefined);
+}
+
 function jstMinutes() {
   const parts = new Intl.DateTimeFormat("ja-JP", {
     hour: "2-digit",
@@ -78,10 +96,16 @@ export async function requestDesktopPermission() {
 }
 
 /** Sound + desktop notification, honouring the user's settings and quiet hours. */
-export function notify(settings: NotifySettings, title: string, body: string) {
+export function notify(
+  settings: NotifySettings,
+  title: string,
+  body: string,
+  globalQuiet: QuietWindow[] = [],
+) {
   if (!settings.enabled) return;
-  if (inQuietHours(settings.quiet_hours)) return;
-  playSound(settings.sound, settings.volume);
+  if (inQuietHours([...settings.quiet_hours, ...globalQuiet])) return;
+  if (settings.sound_url) void playCustomSound(settings.sound_url, settings.volume);
+  else playSound(settings.sound, settings.volume);
   if (
     settings.desktop &&
     typeof Notification !== "undefined" &&

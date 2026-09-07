@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          created_at: string
+          id: boolean
+          quiet_hours: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: boolean
+          quiet_hours?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: boolean
+          quiet_hours?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       birthday_cards: {
         Row: {
           created_at: string
@@ -249,6 +270,7 @@ export type Database = {
           enabled: boolean
           quiet_hours: Json
           sound: string
+          sound_url: string | null
           updated_at: string
           user_id: string
           volume: number
@@ -258,6 +280,7 @@ export type Database = {
           enabled?: boolean
           quiet_hours?: Json
           sound?: string
+          sound_url?: string | null
           updated_at?: string
           user_id: string
           volume?: number
@@ -267,6 +290,7 @@ export type Database = {
           enabled?: boolean
           quiet_hours?: Json
           sound?: string
+          sound_url?: string | null
           updated_at?: string
           user_id?: string
           volume?: number

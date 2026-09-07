@@ -50,7 +50,7 @@ function ProfilePage() {
   async function openTalk() {
     if (!session) return;
     const chatId = await getOrCreateDirectChat(session.user.id, id);
-    void navigate({ to: "/talk/$id", params: { id: chatId } });
+    void navigate({ to: "/talk/$id", params: { id: chatId }, replace: true });
   }
 
   if (!profile) {

@@ -5,11 +5,15 @@ import type { Profile } from "./types";
 import {
   DEFAULT_NOTIFY,
   applyCustomTheme,
+  getGlobalQuietHours,
   getNotifySettings,
   listCustomThemes,
   type NotifySettings,
+  type QuietWindow,
 } from "./extras";
 import { notify } from "./notify";
+import { listChats } from "./db";
+import { setUnreadFavicon } from "./favicon";
 
 export const USERNAME_DOMAIN = "pira.local";
 
@@ -31,6 +35,9 @@ type Ctx = {
   setDevice: (d: "mobile" | "desktop") => void;
   notifySettings: NotifySettings;
   setNotifySettings: (s: NotifySettings) => void;
+  globalQuiet: QuietWindow[];
+  unread: number;
+  refreshUnread: () => Promise<void>;
 };
 
 const PiraContext = createContext<Ctx | null>(null);
@@ -45,8 +52,12 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
     user_id: "",
     ...DEFAULT_NOTIFY,
   });
+  const [globalQuiet, setGlobalQuiet] = useState<QuietWindow[]>([]);
+  const [unread, setUnread] = useState(0);
   const notifyRef = useRef(notifySettings);
   notifyRef.current = notifySettings;
+  const quietRef = useRef(globalQuiet);
+  quietRef.current = globalQuiet;
 
   const load = useCallback(async (uid: string | undefined) => {
     if (!uid) {
@@ -82,6 +93,25 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
       sub.subscription.unsubscribe();
     };
   }, [load]);
+
+  // Quiet hours the admin forces on every account.
+  useEffect(() => {
+    if (!session) return;
+    let active = true;
+    void getGlobalQuietHours().then((w) => {
+      if (active) setGlobalQuiet(w);
+    });
+    const channel = supabase
+      .channel("pira-app-settings")
+      .on("postgres_changes", { event: "*", schema: "public", table: "app_settings" }, () => {
+        void getGlobalQuietHours().then((w) => setGlobalQuiet(w));
+      })
+      .subscribe();
+    return () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    };
+  }, [session]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem("pira-device");
@@ -127,7 +157,8 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
           if (row.sender_id === session.user.id) return;
           const preview =
             row.kind === "text" ? (row.body ?? "") : row.kind === "sticker" ? "スタンプ" : "写真・動画";
-          notify(notifyRef.current, "PIRA 新しいメッセージ", preview.slice(0, 60));
+          notify(notifyRef.current, "PIRA 新しいメッセージ", preview.slice(0, 60), quietRef.current);
+          void refreshUnread();
         },
       )
       .subscribe();
@@ -135,6 +166,23 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
       void supabase.removeChannel(channel);
     };
   }, [session]);
+
+  const refreshUnread = useCallback(async () => {
+    if (!session) {
+      setUnread(0);
+      return;
+    }
+    const chats = await listChats(session.user.id);
+    setUnread(chats.reduce((sum, c) => sum + c.unread, 0));
+  }, [session]);
+
+  useEffect(() => {
+    void refreshUnread();
+  }, [refreshUnread]);
+
+  useEffect(() => {
+    setUnreadFavicon(unread > 0);
+  }, [unread]);
 
   const refresh = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
@@ -153,8 +201,23 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
       setDevice,
       notifySettings,
       setNotifySettings,
+      globalQuiet,
+      unread,
+      refreshUnread,
     }),
-    [loading, session, profile, isAdmin, refresh, device, setDevice, notifySettings],
+    [
+      loading,
+      session,
+      profile,
+      isAdmin,
+      refresh,
+      device,
+      setDevice,
+      notifySettings,
+      globalQuiet,
+      unread,
+      refreshUnread,
+    ],
   );
 
   return <PiraContext.Provider value={value}>{children}</PiraContext.Provider>;
