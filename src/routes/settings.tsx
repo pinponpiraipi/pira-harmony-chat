@@ -88,6 +88,7 @@ function SettingsPage() {
           <div className="flex flex-wrap gap-2">
             <Link
               to="/stickers"
+              replace
               className="inline-flex items-center gap-2 rounded-full glass-soft px-4 py-2 text-sm font-semibold text-foreground"
             >
               <Smile size={14} /> スタンプ
@@ -95,6 +96,7 @@ function SettingsPage() {
             {isAdmin && (
               <Link
                 to="/admin"
+                replace
                 className="inline-flex items-center gap-2 rounded-full glass-soft px-4 py-2 text-sm font-semibold text-foreground"
               >
                 <Shield size={14} /> 管理者ページ
