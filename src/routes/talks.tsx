@@ -56,9 +56,32 @@ function TalksPage() {
     };
   }, [session, load]);
 
-  const shown = chats.filter((c) =>
-    filter === "all" ? true : filter === "group" ? c.conversation.is_group : !c.conversation.is_group,
-  );
+  // One row per person: keep only that person's most recent conversation,
+  // then float unread talks to the top.
+  const byPerson = new Map<string, ChatSummary>();
+  const deduped: ChatSummary[] = [];
+  for (const c of chats) {
+    if (c.conversation.is_group) {
+      deduped.push(c);
+      continue;
+    }
+    const key = c.otherProfiles[0]?.id ?? c.conversation.id;
+    const current = byPerson.get(key);
+    const stamp = (x: ChatSummary) => x.lastMessage?.created_at ?? x.conversation.created_at;
+    if (!current) byPerson.set(key, c);
+    else if (stamp(c) > stamp(current)) byPerson.set(key, { ...c, unread: c.unread + current.unread });
+    else byPerson.set(key, { ...current, unread: c.unread + current.unread });
+  }
+  const shown = [...deduped, ...byPerson.values()]
+    .filter((c) =>
+      filter === "all" ? true : filter === "group" ? c.conversation.is_group : !c.conversation.is_group,
+    )
+    .sort((a, b) => {
+      if ((a.unread > 0) !== (b.unread > 0)) return a.unread > 0 ? -1 : 1;
+      const at = a.lastMessage?.created_at ?? a.conversation.created_at;
+      const bt = b.lastMessage?.created_at ?? b.conversation.created_at;
+      return bt.localeCompare(at);
+    });
 
   async function createGroup() {
     if (!session || picked.length === 0) return;
@@ -66,7 +89,7 @@ function TalksPage() {
     setCreating(false);
     setGroupName("");
     setPicked([]);
-    void navigate({ to: "/talk/$id", params: { id } });
+    void navigate({ to: "/talk/$id", params: { id }, replace: true });
   }
 
   return (
@@ -110,6 +133,7 @@ function TalksPage() {
                 key={c.conversation.id}
                 to="/talk/$id"
                 params={{ id: c.conversation.id }}
+                replace
                 className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-muted"
               >
                 {c.conversation.is_group ? (

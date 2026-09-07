@@ -79,7 +79,7 @@ function HomePage() {
   async function openTalk(friendId: string) {
     if (!session) return;
     const id = await getOrCreateDirectChat(session.user.id, friendId);
-    void navigate({ to: "/talk/$id", params: { id } });
+    void navigate({ to: "/talk/$id", params: { id }, replace: true });
   }
 
   const visible = friends.filter((f) => !f.hidden && !f.blocked);
@@ -95,7 +95,7 @@ function HomePage() {
       <div className="space-y-3">
         <GlassPanel className="p-4">
           <div className="flex items-center gap-3">
-            <Link to="/u/$id" params={{ id: session!.user.id }}>
+            <Link to="/u/$id" params={{ id: session!.user.id }} replace>
               <Avatar path={profile?.avatar_url} name={profile?.display_name ?? "P"} size={56} />
             </Link>
             <div className="min-w-0 flex-1">
@@ -202,6 +202,7 @@ function HomePage() {
               key={g.conversation.id}
               to="/talk/$id"
               params={{ id: g.conversation.id }}
+              replace
               className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-muted"
             >
               <span className="flex h-11 w-11 items-center justify-center rounded-full glass-soft">
