@@ -33,7 +33,7 @@ import {
   type CustomTheme,
   type ThemeVars,
 } from "@/lib/pira/extras";
-import { SOUNDS, playSound, requestDesktopPermission } from "@/lib/pira/notify";
+import { SOUNDS, playCustomSound, playSound, requestDesktopPermission } from "@/lib/pira/notify";
 
 export const Route = createFileRoute("/settings")({
   ssr: false,
@@ -524,6 +524,44 @@ function NotifySection({
               </button>
             </span>
           ))}
+        </div>
+        <div className="glass-soft space-y-2 rounded-xl p-3">
+          <p className="text-xs text-foreground">
+            {settings.sound_url ? "自分の音声ファイルを使用中" : "パソコンの音声・動画ファイルを通知音にする"}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-1 rounded-full glass-soft px-3 py-1.5 text-xs font-semibold text-foreground">
+              <Plus size={12} /> ファイルを選ぶ
+              <input
+                type="file"
+                accept="audio/*,video/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!file || !userId) return;
+                  if (file.size > 10 * 1024 * 1024) return onNote("10MB以下のファイルを選んでください。");
+                  try {
+                    const path = await uploadMedia(userId, file, fileExt(file));
+                    await persist({ ...settings, sound_url: path });
+                    onNote("通知音を設定しました。");
+                  } catch (err) {
+                    onNote(err instanceof Error ? err.message : String(err));
+                  }
+                }}
+              />
+            </label>
+            {settings.sound_url && (
+              <>
+                <PiraButton variant="soft" onClick={() => void playCustomSound(settings.sound_url!, settings.volume)}>
+                  <Play size={12} /> おためし
+                </PiraButton>
+                <PiraButton variant="ghost" onClick={() => void persist({ ...settings, sound_url: null })}>
+                  元の音に戻す
+                </PiraButton>
+              </>
+            )}
+          </div>
         </div>
         <label className="block text-xs text-muted-foreground">
           音量 {Math.round(settings.volume * 100)}%
