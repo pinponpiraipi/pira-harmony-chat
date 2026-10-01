@@ -183,7 +183,7 @@ export async function saveNotifySettings(s: NotifySettings) {
 /** Quiet hours set by an admin; enforced for every account. */
 export async function getGlobalQuietHours(): Promise<QuietWindow[]> {
   const { data } = await supabase.from("app_settings").select("quiet_hours").eq("id", true).maybeSingle();
-  return ((data?.quiet_hours ?? []) as QuietWindow[]) ?? [];
+  return ((data?.quiet_hours ?? []) as QuietWindow[]);
 }
 
 export async function saveGlobalQuietHours(windows: QuietWindow[]) {

@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { ShieldAlert, Ban, Trash2, Save, Eye } from "lucide-react";
+import { ShieldAlert, Ban, Trash2, Save, Eye, Plus, KeyRound } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { adminSetPassword } from "@/lib/pira/admin.functions";
+import { shrinkImage, uploadMedia } from "@/lib/pira/media";
 import { AppShell } from "@/components/pira/shell";
 import { Avatar, GlassPanel, PiraButton, PiraInput } from "@/components/pira/ui";
 import { usePira } from "@/lib/pira/session";
@@ -12,6 +15,9 @@ import {
   adminListProfiles,
   adminSetBanned,
   adminUpdateProfile,
+  getGlobalQuietHours,
+  saveGlobalQuietHours,
+  type QuietWindow,
 } from "@/lib/pira/extras";
 import { jstTime } from "@/lib/pira/format";
 import type { Conversation, Message, Profile } from "@/lib/pira/types";
@@ -35,7 +41,36 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminPage() {
-  const { isAdmin, loading } = usePira();
+  const { isAdmin, loading, session } = usePira();
+  const setPasswordFn = useServerFn(adminSetPassword);
+  const [quiet, setQuiet] = useState<QuietWindow[]>([]);
+  const [qStart, setQStart] = useState("22:00");
+  const [qEnd, setQEnd] = useState("07:00");
+  const [editPass, setEditPass] = useState("");
+  const [note, setNote] = useState<string | null>(null);
+
+  async function saveQuiet(next: QuietWindow[]) {
+    setQuiet(next);
+    try {
+      await saveGlobalQuietHours(next);
+      setNote("消音時間帯を保存しました。");
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function uploadFor(p: Profile, field: "avatar_url" | "cover_url", file: File) {
+    if (!session) return;
+    try {
+      const blob = await shrinkImage(file, field === "avatar_url" ? 512 : 1600, "image/webp", 0.85);
+      const path = await uploadMedia(session.user.id, blob, "webp");
+      await adminUpdateProfile(p.id, { [field]: path });
+      setNote(field === "avatar_url" ? "アイコンを変更しました。" : "背景を変更しました。");
+      await load();
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : String(err));
+    }
+  }
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [openChat, setOpenChat] = useState<string | null>(null);
@@ -49,6 +84,7 @@ function AdminPage() {
     const [p, c] = await Promise.all([adminListProfiles(), adminListConversations()]);
     setProfiles(p);
     setConversations(c as Conversation[]);
+    setQuiet(await getGlobalQuietHours());
   }, [isAdmin]);
 
   useEffect(() => {
@@ -85,6 +121,28 @@ function AdminPage() {
         <GlassPanel className="flex items-center gap-2 p-4 text-sm font-bold text-foreground">
           <ShieldAlert size={16} /> 管理者メニュー
         </GlassPanel>
+        {note && <GlassPanel className="p-3 text-xs text-foreground">{note}</GlassPanel>}
+
+        <GlassPanel className="space-y-2 p-4">
+          <p className="text-sm font-bold text-foreground">全員の消音時間帯（日本時間）</p>
+          {quiet.length === 0 && <p className="text-xs text-muted-foreground">設定はありません。</p>}
+          {quiet.map((w, i) => (
+            <div key={i} className="flex items-center gap-2 text-sm text-foreground">
+              <span className="flex-1">{w.start} 〜 {w.end}</span>
+              <button className="text-destructive" aria-label="削除" onClick={() => void saveQuiet(quiet.filter((_, idx) => idx !== i))}>
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+          <div className="flex items-center gap-2">
+            <PiraInput type="time" value={qStart} onChange={(e) => setQStart(e.target.value)} />
+            <span className="text-foreground">〜</span>
+            <PiraInput type="time" value={qEnd} onChange={(e) => setQEnd(e.target.value)} />
+            <PiraButton variant="soft" onClick={() => void saveQuiet([...quiet, { start: qStart, end: qEnd }])}>
+              <Plus size={14} />
+            </PiraButton>
+          </div>
+        </GlassPanel>
 
         <GlassPanel className="space-y-3 p-4">
           <p className="text-sm font-bold text-foreground">アカウント {profiles.length}</p>
@@ -112,6 +170,46 @@ function AdminPage() {
                     onChange={(e) => setEditStatus(e.target.value)}
                     placeholder="ステータスメッセージ"
                   />
+                  <div className="flex flex-wrap gap-2">
+                    {(["avatar_url", "cover_url"] as const).map((field) => (
+                      <label key={field} className="inline-flex cursor-pointer items-center gap-1 rounded-full glass-soft px-3 py-1.5 text-xs font-semibold text-foreground">
+                        {field === "avatar_url" ? "アイコンを変更" : "背景写真を変更"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            e.target.value = "";
+                            if (f) void uploadFor(p, field, f);
+                          }}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <PiraInput
+                      type="password"
+                      value={editPass}
+                      onChange={(e) => setEditPass(e.target.value)}
+                      placeholder="新しいパスワード（6文字以上）"
+                    />
+                    <PiraButton
+                      variant="soft"
+                      disabled={editPass.length < 6}
+                      onClick={async () => {
+                        try {
+                          await setPasswordFn({ data: { userId: p.id, password: editPass } });
+                          setEditPass("");
+                          setNote("パスワードを変更しました。");
+                        } catch (err) {
+                          setNote(err instanceof Error ? err.message : "パスワードを変更できませんでした。");
+                        }
+                      }}
+                    >
+                      <KeyRound size={14} />
+                    </PiraButton>
+                  </div>
                   <div className="flex gap-2">
                     <PiraButton
                       onClick={async () => {
