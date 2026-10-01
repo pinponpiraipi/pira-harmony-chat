@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Image as ImageIcon, Send, Trash2, Reply, X, Smile, Cake } from "lucide-react";
+import { Image as ImageIcon, Send, Trash2, Reply, X, Smile, Cake, UserPlus } from "lucide-react";
 import { AppShell } from "@/components/pira/shell";
 import {
   Avatar,
@@ -15,6 +15,8 @@ import { CallCenter } from "@/components/pira/call";
 import { usePira } from "@/lib/pira/session";
 import {
   deleteMessage,
+  inviteToGroup,
+  listFriends,
   loadConversation,
   markRead,
   sendMessage,
@@ -108,6 +110,27 @@ function TalkPage() {
         new Date(m.last_read_at) >= new Date(message.created_at),
     ).length;
 
+  const [inviteList, setInviteList] = useState<
+    { id: string; name: string; avatar: string | null }[] | null
+  >(null);
+  const [invitePick, setInvitePick] = useState<string[]>([]);
+
+  async function openInvite() {
+    if (!session) return;
+    const friends = await listFriends(session.user.id);
+    const memberIds = new Set(members.map((m) => m.user_id));
+    setInvitePick([]);
+    setInviteList(
+      friends
+        .filter((f) => !f.blocked && !memberIds.has(f.friend_id))
+        .map((f) => ({
+          id: f.friend_id,
+          name: f.nickname || f.profile.display_name,
+          avatar: f.profile.avatar_url,
+        })),
+    );
+  }
+
   async function send() {
     if (!session || !draft.trim() || busy) return;
     setBusy(true);
@@ -169,9 +192,73 @@ function TalkPage() {
     <AppShell
       title={title}
       right={
-        session ? <CallCenter conversationId={id} selfId={session.user.id} title={title} /> : null
+        session ? (
+          <div className="flex items-center gap-2">
+            {conversation?.is_group && (
+              <button
+                onClick={() => void openInvite()}
+                aria-label="メンバーを追加"
+                className="rounded-full glass-soft p-2 text-foreground"
+              >
+                <UserPlus size={16} />
+              </button>
+            )}
+            <CallCenter
+              conversationId={id}
+              selfId={session.user.id}
+              title={title}
+              avatarPath={
+                conversation?.is_group
+                  ? conversation.icon_url
+                  : profiles.find((p) => p.id !== session.user.id)?.avatar_url
+              }
+            />
+          </div>
+        ) : null
       }
     >
+      {inviteList && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-background/70 px-4">
+          <GlassPanel className="w-full max-w-sm space-y-2 p-4">
+            <p className="text-sm font-bold text-foreground">メンバーを追加</p>
+            {inviteList.length === 0 && (
+              <p className="text-xs text-muted-foreground">追加できる友だちがいません。</p>
+            )}
+            <div className="pira-scroll max-h-72 space-y-1 overflow-y-auto">
+              {inviteList.map((f) => (
+                <label key={f.id} className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={invitePick.includes(f.id)}
+                    onChange={(e) =>
+                      setInvitePick((cur) =>
+                        e.target.checked ? [...cur, f.id] : cur.filter((x) => x !== f.id),
+                      )
+                    }
+                  />
+                  <Avatar path={f.avatar} name={f.name} size={28} />
+                  {f.name}
+                </label>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <PiraButton variant="ghost" onClick={() => setInviteList(null)}>
+                やめる
+              </PiraButton>
+              <PiraButton
+                disabled={invitePick.length === 0}
+                onClick={async () => {
+                  await inviteToGroup(id, invitePick);
+                  setInviteList(null);
+                  await load();
+                }}
+              >
+                追加する
+              </PiraButton>
+            </div>
+          </GlassPanel>
+        </div>
+      )}
       <div className="space-y-3">
         <GlassPanel className="pira-scroll max-h-[60vh] space-y-3 overflow-y-auto p-3">
           {messages.length === 0 && (

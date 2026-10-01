@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Phone, PhoneOff, Video, Mic, MicOff } from "lucide-react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { PiraButton } from "./ui";
+import { Avatar, PiraButton } from "./ui";
 
 type Mode = "audio" | "video";
 type CallState = "idle" | "calling" | "incoming" | "live";
@@ -16,10 +16,12 @@ export function CallCenter({
   conversationId,
   selfId,
   title,
+  avatarPath,
 }: {
   conversationId: string;
   selfId: string;
   title: string;
+  avatarPath?: string | null;
 }) {
   const chanRef = useRef<RealtimeChannel | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -215,48 +217,58 @@ export function CallCenter({
       </div>
 
       {state !== "idle" && (
-        <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-black/70 px-4">
-          <div className="glass w-full max-w-md rounded-2xl p-4 text-center">
-            <p className="font-display text-lg font-bold text-foreground">{title}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {state === "calling"
-                ? "呼び出し中…"
-                : state === "incoming"
-                  ? `${mode === "video" ? "ビデオ" : "音声"}通話の着信`
-                  : "通話中"}
-            </p>
-            {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
-
-            {mode === "video" && (
-              <div className="relative mt-3 overflow-hidden rounded-xl bg-black">
-                <video ref={remoteVideo} autoPlay playsInline className="h-56 w-full object-cover" />
-                <video
-                  ref={localVideo}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="absolute bottom-2 right-2 h-20 w-16 rounded-lg object-cover ring-1 ring-white/40"
-                />
-              </div>
+        <div className="fixed inset-0 z-50 flex flex-col bg-background">
+          {mode === "video" && (
+            <video
+              ref={remoteVideo}
+              autoPlay
+              playsInline
+              className={`absolute inset-0 h-full w-full object-cover ${state === "live" ? "" : "opacity-0"}`}
+            />
+          )}
+          <audio ref={remoteAudio} autoPlay />
+          <div className="relative flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
+            {!(mode === "video" && state === "live") && (
+              <>
+                <div className={state === "live" ? "" : "animate-pulse"}>
+                  <Avatar path={avatarPath} name={title} size={160} />
+                </div>
+                <p className="font-display text-2xl font-bold text-foreground">{title}</p>
+                <p className="text-sm text-muted-foreground">
+                  {state === "calling"
+                    ? "呼び出し中…"
+                    : state === "incoming"
+                      ? `${mode === "video" ? "ビデオ" : "音声"}通話の着信`
+                      : "通話中"}
+                </p>
+              </>
             )}
-            <audio ref={remoteAudio} autoPlay />
-
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              {state === "incoming" && (
-                <PiraButton onClick={() => void accept()}>
-                  <Phone size={14} /> 応答する
-                </PiraButton>
-              )}
-              {state === "live" && (
-                <PiraButton variant="soft" onClick={toggleMute}>
-                  {muted ? <MicOff size={14} /> : <Mic size={14} />}
-                  {muted ? "ミュート解除" : "ミュート"}
-                </PiraButton>
-              )}
-              <PiraButton variant="danger" onClick={hangup}>
-                <PhoneOff size={14} /> {state === "incoming" ? "拒否" : "終了"}
+            {error && <p className="text-sm text-destructive">{error}</p>}
+          </div>
+          {mode === "video" && (
+            <video
+              ref={localVideo}
+              autoPlay
+              playsInline
+              muted
+              className="absolute right-4 top-4 h-40 w-28 rounded-xl object-cover ring-2 ring-border"
+            />
+          )}
+          <div className="relative flex flex-wrap justify-center gap-3 pb-10">
+            {state === "incoming" && (
+              <PiraButton onClick={() => void accept()}>
+                <Phone size={14} /> 応答する
               </PiraButton>
-            </div>
+            )}
+            {state === "live" && (
+              <PiraButton variant="soft" onClick={toggleMute}>
+                {muted ? <MicOff size={14} /> : <Mic size={14} />}
+                {muted ? "ミュート解除" : "ミュート"}
+              </PiraButton>
+            )}
+            <PiraButton variant="danger" onClick={hangup}>
+              <PhoneOff size={14} /> {state === "incoming" ? "拒否" : "終了"}
+            </PiraButton>
           </div>
         </div>
       )}
