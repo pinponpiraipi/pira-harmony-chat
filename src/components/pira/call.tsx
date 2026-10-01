@@ -21,7 +21,7 @@ export function CallCenter({
   conversationId: string;
   selfId: string;
   title: string;
-  avatarPath?: string | null;
+  avatarPath?: string | null | undefined;
 }) {
   const chanRef = useRef<RealtimeChannel | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
