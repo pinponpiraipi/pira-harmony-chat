@@ -18,19 +18,25 @@ export type Database = {
         Row: {
           created_at: string
           id: boolean
+          notifications_off: boolean
           quiet_hours: Json
+          screen_locked: boolean
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: boolean
+          notifications_off?: boolean
           quiet_hours?: Json
+          screen_locked?: boolean
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: boolean
+          notifications_off?: boolean
           quiet_hours?: Json
+          screen_locked?: boolean
           updated_at?: string
         }
         Relationships: []
