@@ -43,7 +43,9 @@ type Ctx = {
   refreshUnread: () => Promise<void>;
 };
 
-const PiraContext = createContext<Ctx | null>(null);
+// Kept on globalThis so hot reloads during editing reuse the same context.
+const g = globalThis as unknown as { __piraCtx?: React.Context<Ctx | null> };
+const PiraContext = g.__piraCtx ?? (g.__piraCtx = createContext<Ctx | null>(null));
 
 export function PiraProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
