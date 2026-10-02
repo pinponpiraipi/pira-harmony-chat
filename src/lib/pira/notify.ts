@@ -101,7 +101,9 @@ export function notify(
   title: string,
   body: string,
   globalQuiet: QuietWindow[] = [],
+  globalOff = false,
 ) {
+  if (globalOff) return;
   if (!settings.enabled) return;
   if (inQuietHours([...settings.quiet_hours, ...globalQuiet])) return;
   if (settings.sound_url) void playCustomSound(settings.sound_url, settings.volume);

@@ -194,6 +194,30 @@ export async function saveGlobalQuietHours(windows: QuietWindow[]) {
   if (error) throw error;
 }
 
+export type AppFlags = { screen_locked: boolean; notifications_off: boolean };
+
+export async function getAppFlags(): Promise<AppFlags> {
+  const { data } = await supabase
+    .from("app_settings")
+    .select("screen_locked, notifications_off")
+    .eq("id", true)
+    .maybeSingle();
+  return {
+    screen_locked: Boolean(data?.screen_locked),
+    notifications_off: Boolean(data?.notifications_off),
+  };
+}
+
+export async function saveAppFlags(patch: Partial<AppFlags>) {
+  const { error } = await supabase.from("app_settings").update(patch).eq("id", true);
+  if (error) throw error;
+}
+
+export async function adminRestoreProfile(id: string) {
+  const { error } = await supabase.from("profiles").update({ deleted: false }).eq("id", id);
+  if (error) throw error;
+}
+
 /* ---------------- birthday cards ---------------- */
 
 export async function listBirthdayCards(userId: string) {
@@ -252,7 +276,7 @@ export async function adminUpdateProfile(
 }
 
 export async function adminDeleteProfile(id: string) {
-  const { error } = await supabase.from("profiles").delete().eq("id", id);
+  const { error } = await supabase.from("profiles").update({ deleted: true }).eq("id", id);
   if (error) throw error;
 }
 
