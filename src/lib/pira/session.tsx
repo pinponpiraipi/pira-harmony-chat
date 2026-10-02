@@ -5,7 +5,9 @@ import type { Profile } from "./types";
 import {
   DEFAULT_NOTIFY,
   applyCustomTheme,
+  getAppFlags,
   getGlobalQuietHours,
+  type AppFlags,
   getNotifySettings,
   listCustomThemes,
   type NotifySettings,
@@ -36,6 +38,7 @@ type Ctx = {
   notifySettings: NotifySettings;
   setNotifySettings: (s: NotifySettings) => void;
   globalQuiet: QuietWindow[];
+  flags: AppFlags;
   unread: number;
   refreshUnread: () => Promise<void>;
 };
@@ -56,6 +59,9 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
   const [unread, setUnread] = useState(0);
   const notifyRef = useRef(notifySettings);
   notifyRef.current = notifySettings;
+  const [flags, setFlags] = useState<AppFlags>({ screen_locked: false, notifications_off: false });
+  const flagsRef = useRef(flags);
+  flagsRef.current = flags;
   const quietRef = useRef(globalQuiet);
   quietRef.current = globalQuiet;
 
@@ -101,10 +107,14 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
     void getGlobalQuietHours().then((w) => {
       if (active) setGlobalQuiet(w);
     });
+    void getAppFlags().then((f) => {
+      if (active) setFlags(f);
+    });
     const channel = supabase
       .channel("pira-app-settings")
       .on("postgres_changes", { event: "*", schema: "public", table: "app_settings" }, () => {
         void getGlobalQuietHours().then((w) => setGlobalQuiet(w));
+        void getAppFlags().then(setFlags);
       })
       .subscribe();
     return () => {
@@ -157,7 +167,7 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
           if (row.sender_id === session.user.id) return;
           const preview =
             row.kind === "text" ? (row.body ?? "") : row.kind === "sticker" ? "スタンプ" : "写真・動画";
-          notify(notifyRef.current, "PIRA 新しいメッセージ", preview.slice(0, 60), quietRef.current);
+          notify(notifyRef.current, "PIRA 新しいメッセージ", preview.slice(0, 60), quietRef.current, flagsRef.current.notifications_off);
           void refreshUnread();
         },
       )
@@ -202,6 +212,7 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
       notifySettings,
       setNotifySettings,
       globalQuiet,
+      flags,
       unread,
       refreshUnread,
     }),
@@ -215,12 +226,29 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
       setDevice,
       notifySettings,
       globalQuiet,
+      flags,
       unread,
       refreshUnread,
     ],
   );
 
-  return <PiraContext.Provider value={value}>{children}</PiraContext.Provider>;
+  const blocked = Boolean(session) && !isAdmin && (flags.screen_locked || Boolean(profile?.deleted));
+
+  return (
+    <PiraContext.Provider value={value}>
+      {children}
+      {blocked && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 bg-background px-6 text-center">
+          <p className="font-display text-2xl font-bold text-foreground">
+            {profile?.deleted ? "このアカウントは利用できません" : "ただいま画面がブロックされています"}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {profile?.deleted ? "管理者にお問い合わせください。" : "管理者が解除するまでお待ちください。"}
+          </p>
+        </div>
+      )}
+    </PiraContext.Provider>
+  );
 }
 
 export function usePira() {

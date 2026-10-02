@@ -89,7 +89,9 @@ export async function updateFriend(id: string, patch: Partial<FriendEntry>) {
     favorite?: boolean;
     hidden?: boolean;
     blocked?: boolean;
+    removed?: boolean;
   } = {};
+  if (patch.removed !== undefined) update.removed = patch.removed;
   if (patch.nickname !== undefined) update.nickname = patch.nickname;
   if (patch.favorite !== undefined) update.favorite = patch.favorite;
   if (patch.hidden !== undefined) update.hidden = patch.hidden;
@@ -99,7 +101,7 @@ export async function updateFriend(id: string, patch: Partial<FriendEntry>) {
 }
 
 export async function removeFriend(id: string) {
-  await supabase.from("friendships").delete().eq("id", id);
+  await supabase.from("friendships").update({ removed: true, favorite: false }).eq("id", id);
 }
 
 export type ChatSummary = {

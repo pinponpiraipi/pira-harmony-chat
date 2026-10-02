@@ -9,6 +9,7 @@ export type Profile = {
   age: number | null;
   theme: string;
   banned: boolean;
+  deleted?: boolean;
   created_at: string;
 };
 
@@ -20,6 +21,7 @@ export type Friendship = {
   favorite: boolean;
   hidden: boolean;
   blocked: boolean;
+  removed?: boolean;
 };
 
 export type FriendEntry = Friendship & { profile: Profile };

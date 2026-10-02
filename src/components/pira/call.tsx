@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Phone, PhoneOff, Video, Mic, MicOff } from "lucide-react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -34,6 +35,13 @@ export function CallCenter({
   const [state, setState] = useState<CallState>("idle");
   const [mode, setMode] = useState<Mode>("audio");
   const [muted, setMuted] = useState(false);
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    if (state !== "live") return setSeconds(0);
+    const t = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [state]);
+  const fmt = (n: number) => `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
   const [error, setError] = useState<string | null>(null);
 
   const send = useCallback(
@@ -216,8 +224,9 @@ export function CallCenter({
         </button>
       </div>
 
-      {state !== "idle" && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      {state !== "idle" &&
+        createPortal(
+        <div className="fixed inset-0 z-50 flex flex-col bg-background" role="dialog" aria-label="通話画面">
           {mode === "video" && (
             <video
               ref={remoteVideo}
@@ -239,7 +248,7 @@ export function CallCenter({
                     ? "呼び出し中…"
                     : state === "incoming"
                       ? `${mode === "video" ? "ビデオ" : "音声"}通話の着信`
-                      : "通話中"}
+                      : `通話中 ${fmt(seconds)}`}
                 </p>
               </>
             )}
@@ -270,7 +279,8 @@ export function CallCenter({
               <PhoneOff size={14} /> {state === "incoming" ? "拒否" : "終了"}
             </PiraButton>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

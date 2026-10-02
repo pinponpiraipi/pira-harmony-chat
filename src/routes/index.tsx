@@ -82,7 +82,7 @@ function HomePage() {
     void navigate({ to: "/talk/$id", params: { id }, replace: true });
   }
 
-  const visible = friends.filter((f) => !f.hidden && !f.blocked);
+  const visible = friends.filter((f) => !f.hidden && !f.blocked && !f.removed);
   const favorites = visible.filter((f) => f.favorite);
   const others = visible.filter((f) => !f.favorite);
   const birthdays = visible.filter((f) => isBirthdayToday(f.profile.birthday));
@@ -220,27 +220,27 @@ function HomePage() {
           ))}
         </Section>
 
-        {friends.some((f) => f.hidden || f.blocked) && (
-          <Section title="非表示・ブロック中の友だち">
+        {friends.some((f) => f.hidden || f.blocked || f.removed) && (
+          <Section title="非表示・ブロック・削除した友だち">
             {friends
-              .filter((f) => f.hidden || f.blocked)
+              .filter((f) => f.hidden || f.blocked || f.removed)
               .map((f) => (
                 <div key={f.id} className="flex items-center gap-3 rounded-xl px-2 py-2">
                   <Avatar path={f.profile.avatar_url} name={f.profile.display_name} size={36} />
                   <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                     {f.nickname || f.profile.display_name}
                     <span className="ml-2 text-[10px] text-muted-foreground">
-                      {f.blocked ? "ブロック中" : "非表示"}
+                      {f.removed ? "削除済み" : f.blocked ? "ブロック中" : "非表示"}
                     </span>
                   </span>
                   <PiraButton
                     variant="soft"
                     onClick={async () => {
-                      await updateFriend(f.id, { hidden: false, blocked: false });
+                      await updateFriend(f.id, { hidden: false, blocked: false, removed: false });
                       await load();
                     }}
                   >
-                    {f.blocked ? "ブロック解除" : "表示に戻す"}
+                    {f.removed ? "友だちに戻す" : f.blocked ? "ブロック解除" : "表示に戻す"}
                   </PiraButton>
                 </div>
               ))}

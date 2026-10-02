@@ -163,6 +163,7 @@ export type Database = {
           hidden: boolean
           id: string
           nickname: string | null
+          removed: boolean
           user_id: string
         }
         Insert: {
@@ -173,6 +174,7 @@ export type Database = {
           hidden?: boolean
           id?: string
           nickname?: string | null
+          removed?: boolean
           user_id: string
         }
         Update: {
@@ -183,6 +185,7 @@ export type Database = {
           hidden?: boolean
           id?: string
           nickname?: string | null
+          removed?: boolean
           user_id?: string
         }
         Relationships: []
@@ -311,6 +314,7 @@ export type Database = {
           birthday: string | null
           cover_url: string | null
           created_at: string
+          deleted: boolean
           display_name: string
           id: string
           status_message: string | null
@@ -325,6 +329,7 @@ export type Database = {
           birthday?: string | null
           cover_url?: string | null
           created_at?: string
+          deleted?: boolean
           display_name: string
           id: string
           status_message?: string | null
@@ -339,6 +344,7 @@ export type Database = {
           birthday?: string | null
           cover_url?: string | null
           created_at?: string
+          deleted?: boolean
           display_name?: string
           id?: string
           status_message?: string | null

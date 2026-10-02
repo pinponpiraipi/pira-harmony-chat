@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { ShieldAlert, Ban, Trash2, Save, Eye, Plus, KeyRound } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { adminSetPassword } from "@/lib/pira/admin.functions";
+import { adminSetPassword, adminListOrphans, adminRestoreOrphan } from "@/lib/pira/admin.functions";
 import { shrinkImage, uploadMedia } from "@/lib/pira/media";
 import { AppShell } from "@/components/pira/shell";
 import { Avatar, GlassPanel, PiraButton, PiraInput } from "@/components/pira/ui";
@@ -15,6 +15,10 @@ import {
   adminListProfiles,
   adminSetBanned,
   adminUpdateProfile,
+  adminRestoreProfile,
+  getAppFlags,
+  saveAppFlags,
+  type AppFlags,
   getGlobalQuietHours,
   saveGlobalQuietHours,
   type QuietWindow,
@@ -43,6 +47,19 @@ export const Route = createFileRoute("/admin")({
 function AdminPage() {
   const { isAdmin, loading, session } = usePira();
   const setPasswordFn = useServerFn(adminSetPassword);
+  const listOrphansFn = useServerFn(adminListOrphans);
+  const restoreOrphanFn = useServerFn(adminRestoreOrphan);
+  const [orphans, setOrphans] = useState<{ id: string; username: string }[]>([]);
+  const [flags, setFlags] = useState<AppFlags>({ screen_locked: false, notifications_off: false });
+  async function toggleFlag(key: keyof AppFlags) {
+    const next = { ...flags, [key]: !flags[key] };
+    setFlags(next);
+    try {
+      await saveAppFlags({ [key]: next[key] });
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : String(err));
+    }
+  }
   const [quiet, setQuiet] = useState<QuietWindow[]>([]);
   const [qStart, setQStart] = useState("22:00");
   const [qEnd, setQEnd] = useState("07:00");
@@ -85,6 +102,8 @@ function AdminPage() {
     setProfiles(p);
     setConversations(c as Conversation[]);
     setQuiet(await getGlobalQuietHours());
+    setFlags(await getAppFlags());
+    void listOrphansFn().then(setOrphans).catch(() => undefined);
   }, [isAdmin]);
 
   useEffect(() => {
@@ -121,6 +140,40 @@ function AdminPage() {
         <GlassPanel className="flex items-center gap-2 p-4 text-sm font-bold text-foreground">
           <ShieldAlert size={16} /> 管理者メニュー
         </GlassPanel>
+        <GlassPanel className="flex flex-wrap gap-2 p-4">
+          <PiraButton variant={flags.screen_locked ? "danger" : "soft"} onClick={() => void toggleFlag("screen_locked")}>
+            {flags.screen_locked ? "画面ブロックを解除" : "画面ブロック"}
+          </PiraButton>
+          <PiraButton variant={flags.notifications_off ? "danger" : "soft"} onClick={() => void toggleFlag("notifications_off")}>
+            {flags.notifications_off ? "全員の通知を戻す" : "全員の通知をオフ"}
+          </PiraButton>
+        </GlassPanel>
+
+        {orphans.length > 0 && (
+          <GlassPanel className="space-y-2 p-4">
+            <p className="text-sm font-bold text-foreground">以前に削除したアカウント</p>
+            {orphans.map((o) => (
+              <div key={o.id} className="flex items-center gap-2 text-sm text-foreground">
+                <span className="flex-1 truncate">@{o.username}</span>
+                <PiraButton
+                  variant="soft"
+                  onClick={async () => {
+                    try {
+                      await restoreOrphanFn({ data: o });
+                      setNote("アカウントを戻しました。");
+                      await load();
+                    } catch (err) {
+                      setNote(err instanceof Error ? err.message : String(err));
+                    }
+                  }}
+                >
+                  元に戻す
+                </PiraButton>
+              </div>
+            ))}
+          </GlassPanel>
+        )}
+
         {note && <GlassPanel className="p-3 text-xs text-foreground">{note}</GlassPanel>}
 
         <GlassPanel className="space-y-2 p-4">
@@ -154,6 +207,7 @@ function AdminPage() {
                   <p className="truncate text-sm font-semibold text-foreground">
                     {p.display_name}
                     {p.banned && <span className="ml-2 text-xs text-destructive">追放中</span>}
+                    {p.deleted && <span className="ml-2 text-xs text-destructive">削除済み</span>}
                   </p>
                   <p className="truncate text-[10px] text-muted-foreground">@{p.username}</p>
                 </div>
@@ -247,10 +301,10 @@ function AdminPage() {
                     <Ban size={14} /> {p.banned ? "追放を解除" : "追放する"}
                   </PiraButton>
                   <PiraButton
-                    variant="danger"
-                    onClick={() => void adminDeleteProfile(p.id).then(load)}
+                    variant={p.deleted ? "soft" : "danger"}
+                    onClick={() => void (p.deleted ? adminRestoreProfile(p.id) : adminDeleteProfile(p.id)).then(load)}
                   >
-                    <Trash2 size={14} /> 削除
+                    <Trash2 size={14} /> {p.deleted ? "削除を取り消す" : "削除"}
                   </PiraButton>
                 </div>
               )}
