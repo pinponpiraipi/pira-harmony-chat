@@ -47,6 +47,10 @@ async function build() {
 export function setUnreadFavicon(unread: boolean) {
   const el = link();
   if (!el) return;
+  if (getCloak().icon || getCloak().title) {
+    applyCloak();
+    if (getCloak().icon) return;
+  }
   if (normalHref === null) normalHref = el.getAttribute("href") || "/favicon.png";
   if (!unread) {
     el.href = normalHref;

@@ -69,6 +69,8 @@ function SettingsPage() {
 
         <ProfileSection onNote={setNote} />
 
+        <CloakSection onNote={setNote} />
+
         <GlassPanel className="space-y-3 p-4">
           <p className="flex items-center gap-2 text-sm font-bold text-foreground">
             <Palette size={16} /> デザイン
