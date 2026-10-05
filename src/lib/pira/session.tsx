@@ -16,6 +16,7 @@ import {
 import { notify } from "./notify";
 import { listChats } from "./db";
 import { setUnreadFavicon } from "./favicon";
+import { StoredImage } from "@/components/pira/ui";
 
 export const USERNAME_DOMAIN = "pira.local";
 
