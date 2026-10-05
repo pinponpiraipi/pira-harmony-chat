@@ -17,6 +17,7 @@ import { notify } from "./notify";
 import { listChats } from "./db";
 import { setUnreadFavicon } from "./favicon";
 import { StoredImage } from "@/components/pira/ui";
+import { applyCloak } from "./cloak";
 
 export const USERNAME_DOMAIN = "pira.local";
 
@@ -195,6 +196,7 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setUnreadFavicon(unread > 0);
+    applyCloak();
   }, [unread]);
 
   const refresh = useCallback(async () => {

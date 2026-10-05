@@ -21,6 +21,8 @@ import { Avatar, GlassPanel, PiraButton, PiraInput, StoredImage } from "@/compon
 import { usePira } from "@/lib/pira/session";
 import { supabase } from "@/integrations/supabase/client";
 import { THEMES } from "@/lib/pira/types";
+import { CLOAK_PRESETS, getCloak, openInBlank, saveCloak, type Cloak } from "@/lib/pira/cloak";
+import { getAppFlags } from "@/lib/pira/extras";
 import { ageFromBirthday } from "@/lib/pira/format";
 import { fileExt, shrinkImage, uploadMedia } from "@/lib/pira/media";
 import {
@@ -658,6 +660,66 @@ function NotifySection({
           </PiraButton>
         </div>
       </div>
+    </GlassPanel>
+  );
+}
+
+function CloakSection({ onNote }: { onNote: (s: string) => void }) {
+  const [cloak, setCloak] = useState<Cloak>({ title: "", icon: "" });
+  const [shared, setShared] = useState<string | null>(null);
+  useEffect(() => {
+    setCloak(getCloak());
+    void getAppFlags().then((f) => setShared(f.cloak_url ?? null));
+  }, []);
+  function update(next: Cloak) {
+    setCloak(next);
+    saveCloak(next);
+  }
+  return (
+    <GlassPanel className="space-y-3 p-4">
+      <p className="text-sm font-bold text-foreground">タブの見た目（この端末）</p>
+      <div className="flex flex-wrap gap-2">
+        {CLOAK_PRESETS.map((p) => (
+          <PiraButton key={p.label} variant="soft" onClick={() => { update({ title: p.title, icon: p.icon }); if (!p.title) location.reload(); }}>
+            {p.label}
+          </PiraButton>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">タブの名前</p>
+      <PiraInput value={cloak.title} placeholder="例: ホーム" onChange={(e) => update({ ...cloak, title: e.target.value })} />
+      <p className="text-xs text-muted-foreground">タブのアイコン</p>
+      <div className="flex items-center gap-2">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-dashed border-border">
+          {cloak.icon && <img src={cloak.icon} alt="" className="h-6 w-6" />}
+        </div>
+        <PiraInput value={cloak.icon} placeholder="画像URL（任意）" onChange={(e) => update({ ...cloak, icon: e.target.value })} />
+        <label className="inline-flex shrink-0 cursor-pointer items-center rounded-full glass-soft px-3 py-1.5 text-xs font-semibold text-foreground">
+          画像を選ぶ
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (!f) return;
+              const blob = await shrinkImage(f, 64, "image/png");
+              const r = new FileReader();
+              r.onload = () => update({ ...cloak, icon: String(r.result) });
+              r.readAsDataURL(blob);
+            }}
+          />
+        </label>
+      </div>
+      <PiraButton
+        onClick={() => {
+          const url = shared || window.location.origin;
+          if (!openInBlank(url, cloak)) onNote("ポップアップを許可してください。");
+        }}
+      >
+        about:blank で開く
+      </PiraButton>
+      {shared && <p className="break-all text-[10px] text-muted-foreground">開くサイト: {shared}</p>}
     </GlassPanel>
   );
 }
