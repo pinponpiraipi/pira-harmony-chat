@@ -16,24 +16,30 @@ export type Database = {
     Tables: {
       app_settings: {
         Row: {
+          cloak_url: string | null
           created_at: string
           id: boolean
+          lock_image_url: string | null
           notifications_off: boolean
           quiet_hours: Json
           screen_locked: boolean
           updated_at: string
         }
         Insert: {
+          cloak_url?: string | null
           created_at?: string
           id?: boolean
+          lock_image_url?: string | null
           notifications_off?: boolean
           quiet_hours?: Json
           screen_locked?: boolean
           updated_at?: string
         }
         Update: {
+          cloak_url?: string | null
           created_at?: string
           id?: boolean
+          lock_image_url?: string | null
           notifications_off?: boolean
           quiet_hours?: Json
           screen_locked?: boolean
