@@ -194,17 +194,24 @@ export async function saveGlobalQuietHours(windows: QuietWindow[]) {
   if (error) throw error;
 }
 
-export type AppFlags = { screen_locked: boolean; notifications_off: boolean };
+export type AppFlags = {
+  screen_locked: boolean;
+  notifications_off: boolean;
+  lock_image_url?: string | null;
+  cloak_url?: string | null;
+};
 
 export async function getAppFlags(): Promise<AppFlags> {
   const { data } = await supabase
     .from("app_settings")
-    .select("screen_locked, notifications_off")
+    .select("screen_locked, notifications_off, lock_image_url, cloak_url")
     .eq("id", true)
     .maybeSingle();
   return {
     screen_locked: Boolean(data?.screen_locked),
     notifications_off: Boolean(data?.notifications_off),
+    lock_image_url: data?.lock_image_url ?? null,
+    cloak_url: data?.cloak_url ?? null,
   };
 }
 

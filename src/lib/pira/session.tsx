@@ -241,12 +241,18 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
       {children}
       {blocked && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 bg-background px-6 text-center">
-          <p className="font-display text-2xl font-bold text-foreground">
-            {profile?.deleted ? "このアカウントは利用できません" : "ただいま画面がブロックされています"}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {profile?.deleted ? "管理者にお問い合わせください。" : "管理者が解除するまでお待ちください。"}
-          </p>
+          {!profile?.deleted && flags.lock_image_url ? (
+            <StoredImage path={flags.lock_image_url} alt="ブロック画面" className="absolute inset-0 h-full w-full object-cover" />
+          ) : (
+            <>
+              <p className="font-display text-2xl font-bold text-foreground">
+                {profile?.deleted ? "このアカウントは利用できません" : "ただいま画面がブロックされています"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {profile?.deleted ? "管理者にお問い合わせください。" : "管理者が解除するまでお待ちください。"}
+              </p>
+            </>
+          )}
         </div>
       )}
     </PiraContext.Provider>
