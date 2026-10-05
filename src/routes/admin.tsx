@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { StoredImage } from "@/components/pira/ui";
 import { useCallback, useEffect, useState } from "react";
 import { ShieldAlert, Ban, Trash2, Save, Eye, Plus, KeyRound } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
@@ -46,6 +47,8 @@ export const Route = createFileRoute("/admin")({
 
 function AdminPage() {
   const { isAdmin, loading, session } = usePira();
+  const navigate = useNavigate();
+  const [cloakDraft, setCloakDraft] = useState("");
   const setPasswordFn = useServerFn(adminSetPassword);
   const listOrphansFn = useServerFn(adminListOrphans);
   const restoreOrphanFn = useServerFn(adminRestoreOrphan);
@@ -102,7 +105,9 @@ function AdminPage() {
     setProfiles(p);
     setConversations(c as Conversation[]);
     setQuiet(await getGlobalQuietHours());
-    setFlags(await getAppFlags());
+    const f = await getAppFlags();
+    setFlags(f);
+    setCloakDraft(f.cloak_url ?? "");
     void listOrphansFn().then(setOrphans).catch(() => undefined);
   }, [isAdmin]);
 
@@ -146,6 +151,70 @@ function AdminPage() {
           </PiraButton>
           <PiraButton variant={flags.notifications_off ? "danger" : "soft"} onClick={() => void toggleFlag("notifications_off")}>
             {flags.notifications_off ? "全員の通知を戻す" : "全員の通知をオフ"}
+          </PiraButton>
+        </GlassPanel>
+
+        <GlassPanel className="space-y-2 p-4">
+          <p className="text-sm font-bold text-foreground">ブロック画面の画像</p>
+          {flags.lock_image_url ? (
+            <StoredImage path={flags.lock_image_url} alt="ブロック画面" className="max-h-40 w-full rounded-xl object-cover" />
+          ) : (
+            <p className="text-xs text-muted-foreground">画像はありません（文字だけ表示されます）。</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-1 rounded-full glass-soft px-3 py-1.5 text-xs font-semibold text-foreground">
+              画像を選ぶ
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (!f || !session) return;
+                  try {
+                    const blob = await shrinkImage(f, 1920, "image/webp", 0.85);
+                    const path = await uploadMedia(session.user.id, blob, "webp");
+                    await saveAppFlags({ lock_image_url: path });
+                    setFlags((x) => ({ ...x, lock_image_url: path }));
+                    setNote("ブロック画面の画像を変更しました。");
+                  } catch (err) {
+                    setNote(err instanceof Error ? err.message : String(err));
+                  }
+                }}
+              />
+            </label>
+            {flags.lock_image_url && (
+              <PiraButton
+                variant="ghost"
+                onClick={async () => {
+                  await saveAppFlags({ lock_image_url: null });
+                  setFlags((x) => ({ ...x, lock_image_url: null }));
+                }}
+              >
+                画像を外す
+              </PiraButton>
+            )}
+          </div>
+        </GlassPanel>
+
+        <GlassPanel className="space-y-2 p-4">
+          <p className="text-sm font-bold text-foreground">about:blank の中で開くサイト（全員に共有）</p>
+          <PiraInput
+            value={cloakDraft}
+            onChange={(e) => setCloakDraft(e.target.value)}
+            placeholder="https://…（空ならPIRA本体）"
+          />
+          <PiraButton
+            variant="soft"
+            onClick={async () => {
+              const v = cloakDraft.trim() || null;
+              await saveAppFlags({ cloak_url: v });
+              setFlags((x) => ({ ...x, cloak_url: v }));
+              setNote("共有サイトを保存しました。");
+            }}
+          >
+            <Save size={14} /> 保存
           </PiraButton>
         </GlassPanel>
 
@@ -320,8 +389,14 @@ function AdminPage() {
                 <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                   {c.is_group ? (c.name || "グループ") : "1対1トーク"}・作成者 {nameOf(c.created_by)}
                 </span>
-                <PiraButton variant="soft" onClick={() => void openConversation(c.id)}>
-                  <Eye size={14} /> 見る
+                <PiraButton
+                  variant="soft"
+                  onClick={() => void navigate({ to: "/talk/$id", params: { id: c.id }, replace: true })}
+                >
+                  <Eye size={14} /> 開く
+                </PiraButton>
+                <PiraButton variant="ghost" onClick={() => void openConversation(c.id)}>
+                  一覧
                 </PiraButton>
               </div>
               {openChat === c.id && (

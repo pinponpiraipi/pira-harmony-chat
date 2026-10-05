@@ -1,4 +1,5 @@
 import { PIRA_LOGO_URL } from "./brand";
+import { applyCloak, getCloak } from "./cloak";
 
 let normalHref: string | null = null;
 let alertHref: string | null = null;
@@ -46,6 +47,10 @@ async function build() {
 export function setUnreadFavicon(unread: boolean) {
   const el = link();
   if (!el) return;
+  if (getCloak().icon || getCloak().title) {
+    applyCloak();
+    if (getCloak().icon) return;
+  }
   if (normalHref === null) normalHref = el.getAttribute("href") || "/favicon.png";
   if (!unread) {
     el.href = normalHref;
