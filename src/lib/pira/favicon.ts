@@ -1,4 +1,5 @@
 import { PIRA_LOGO_URL } from "./brand";
+import { applyCloak, getCloak } from "./cloak";
 
 let normalHref: string | null = null;
 let alertHref: string | null = null;
