@@ -3,7 +3,7 @@ import { StoredImage } from "@/components/pira/ui";
 import { useCallback, useEffect, useState } from "react";
 import { ShieldAlert, Ban, Trash2, Save, Eye, Plus, KeyRound } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { adminSetPassword, adminListOrphans, adminRestoreOrphan } from "@/lib/pira/admin.functions";
+import { adminEditProfile, adminSetPassword, adminListOrphans, adminRestoreOrphan } from "@/lib/pira/admin.functions";
 import { shrinkImage, uploadMedia } from "@/lib/pira/media";
 import { AppShell } from "@/components/pira/shell";
 import { Avatar, GlassPanel, PiraButton, PiraInput } from "@/components/pira/ui";
@@ -50,6 +50,7 @@ function AdminPage() {
   const navigate = useNavigate();
   const [cloakDraft, setCloakDraft] = useState("");
   const setPasswordFn = useServerFn(adminSetPassword);
+  const editProfileFn = useServerFn(adminEditProfile);
   const listOrphansFn = useServerFn(adminListOrphans);
   const restoreOrphanFn = useServerFn(adminRestoreOrphan);
   const [orphans, setOrphans] = useState<{ id: string; username: string }[]>([]);
@@ -84,7 +85,7 @@ function AdminPage() {
     try {
       const blob = await shrinkImage(file, field === "avatar_url" ? 512 : 1600, "image/webp", 0.85);
       const path = await uploadMedia(session.user.id, blob, "webp");
-      await adminUpdateProfile(p.id, { [field]: path });
+      await editProfileFn({ data: { id: p.id, patch: { [field]: path } } });
       setNote(field === "avatar_url" ? "アイコンを変更しました。" : "背景を変更しました。");
       await load();
     } catch (err) {
@@ -336,12 +337,22 @@ function AdminPage() {
                   <div className="flex gap-2">
                     <PiraButton
                       onClick={async () => {
-                        await adminUpdateProfile(p.id, {
-                          display_name: editName.trim() || p.display_name,
-                          status_message: editStatus.trim() || null,
-                        });
-                        setEditId(null);
-                        await load();
+                        try {
+                          await editProfileFn({
+                            data: {
+                              id: p.id,
+                              patch: {
+                                display_name: editName.trim() || p.display_name,
+                                status_message: editStatus.trim() || null,
+                              },
+                            },
+                          });
+                          setNote("変更を保存しました。");
+                          setEditId(null);
+                          await load();
+                        } catch (err) {
+                          setNote(err instanceof Error ? err.message : "保存できませんでした。");
+                        }
                       }}
                     >
                       <Save size={14} /> 保存
