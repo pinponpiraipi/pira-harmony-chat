@@ -80,7 +80,7 @@ export const adminEditProfile = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("profiles")
-      .update(data.patch)
+      .update(Object.fromEntries(Object.entries(data.patch).filter(([, v]) => v !== undefined)))
       .eq("id", data.id)
       .select("id");
     if (error) throw new Error(error.message);
