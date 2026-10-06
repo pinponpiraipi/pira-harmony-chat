@@ -80,7 +80,7 @@ export const adminEditProfile = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows, error } = await supabaseAdmin
       .from("profiles")
-      .update(Object.fromEntries(Object.entries(data.patch).filter(([, v]) => v !== undefined)))
+      .update(Object.fromEntries(Object.entries(data.patch).filter(([, v]) => v !== undefined)) as { display_name?: string; status_message?: string | null; avatar_url?: string | null; cover_url?: string | null })
       .eq("id", data.id)
       .select("id");
     if (error) throw new Error(error.message);
