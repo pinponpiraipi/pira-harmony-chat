@@ -17,19 +17,19 @@ export const adminSetPassword = createServerFn({ method: "POST" })
       _role: "admin",
     });
     if (roleError) throw roleError;
-    if (!isAdmin) throw new Response("Forbidden", { status: 403 });
+    if (!isAdmin) throw new Error("管理者のみ変更できます。");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
       password: data.password,
     });
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
 async function assertAdmin(context: { supabase: any; userId: string }) {
   const { data } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
-  if (!data) throw new Response("Forbidden", { status: 403 });
+  if (!data) throw new Error("管理者のみ変更できます。");
 }
 
 /** Admin-only: accounts whose profile was fully removed earlier (can be restored). */
@@ -56,5 +56,34 @@ export const adminRestoreOrphan = createServerFn({ method: "POST" })
       .from("profiles")
       .insert({ id: data.id, username: data.username, display_name: data.username });
     if (error) throw error;
+    return { ok: true };
+  });
+
+/** Admin-only: change another account's profile fields (bypasses per-user rules safely). */
+export const adminEditProfile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        patch: z.object({
+          display_name: z.string().min(1).max(60).optional(),
+          status_message: z.string().max(200).nullable().optional(),
+          avatar_url: z.string().max(500).nullable().optional(),
+          cover_url: z.string().max(500).nullable().optional(),
+        }),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("profiles")
+      .update(Object.fromEntries(Object.entries(data.patch).filter(([, v]) => v !== undefined)) as { display_name?: string; status_message?: string | null; avatar_url?: string | null; cover_url?: string | null })
+      .eq("id", data.id)
+      .select("id");
+    if (error) throw new Error(error.message);
+    if (!rows?.length) throw new Error("アカウントが見つかりませんでした。");
     return { ok: true };
   });
