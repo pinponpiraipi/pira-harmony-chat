@@ -43,6 +43,21 @@ function targetDoc(): Document {
 let lastCount = 0;
 let piraImg: Promise<HTMLImageElement | null> | null = null;
 
+const imgCache = new Map<string, Promise<HTMLImageElement | null>>();
+function loadImg(src: string) {
+  let p = imgCache.get(src);
+  if (!p) {
+    p = new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+    imgCache.set(src, p);
+  }
+  return p;
+}
+
 function loadPira() {
   if (!piraImg) {
     piraImg = new Promise((resolve) => {
@@ -76,8 +91,9 @@ async function buildIcon(mode: TabMode, count: number) {
   c.height = s;
   const ctx = c.getContext("2d")!;
   if (mode === "defense") {
-    if (count > 0) drawDoc(ctx, s, "#f4b400", true);
-    else drawDoc(ctx, s, "#4285f4", false);
+    const img = await loadImg(count > 0 ? "/tab-presentations.png" : "/tab-documents.png");
+    if (img) ctx.drawImage(img, 0, 0, s, s);
+    else drawDoc(ctx, s, count > 0 ? "#f4b400" : "#4285f4", count > 0);
   } else {
     if (count > 0) {
       ctx.fillStyle = "#ef4444";
