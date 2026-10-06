@@ -17,7 +17,7 @@ import { notify } from "./notify";
 import { listChats } from "./db";
 import { setUnreadFavicon } from "./favicon";
 import { StoredImage } from "@/components/pira/ui";
-import { applyCloak } from "./cloak";
+import { needsModeChoice, openInBlank, setTabMode, type TabMode } from "./cloak";
 
 export const USERNAME_DOMAIN = "pira.local";
 
@@ -195,8 +195,7 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUnread]);
 
   useEffect(() => {
-    setUnreadFavicon(unread > 0);
-    applyCloak();
+    setUnreadFavicon(unread);
   }, [unread]);
 
   const refresh = useCallback(async () => {
@@ -237,11 +236,43 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
+  const [choose, setChoose] = useState(false);
+  useEffect(() => {
+    setChoose(needsModeChoice());
+  }, []);
+  function pickMode(m: TabMode, blank: boolean) {
+    setTabMode(m);
+    setChoose(false);
+    if (blank) openInBlank(flags.cloak_url || window.location.href);
+  }
+
   const blocked = Boolean(session) && !isAdmin && (flags.screen_locked || Boolean(profile?.deleted));
 
   return (
     <PiraContext.Provider value={value}>
       {children}
+      {choose && !blocked && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-background/80 px-6 backdrop-blur">
+          <div className="glass w-full max-w-sm space-y-3 rounded-2xl p-5 text-center">
+            <p className="font-display text-lg font-bold text-foreground">モードを選んでください</p>
+            <button
+              className="w-full rounded-xl glass-soft p-3 text-left text-foreground"
+              onClick={() => pickMode("defense", true)}
+            >
+              <p className="font-bold">自己防衛モード</p>
+              <p className="text-xs text-muted-foreground">タブを「Google ドキュメント」に見せかけます。通知が来ると「Google スライド」に。</p>
+            </button>
+            <button
+              className="w-full rounded-xl glass-soft p-3 text-left text-foreground"
+              onClick={() => pickMode("pira", true)}
+            >
+              <p className="font-bold">PIRA尊重モード</p>
+              <p className="text-xs text-muted-foreground">タブは「PIRA」。通知が来ると赤いアイコンと「PIRA:通知来たよ」に。</p>
+            </button>
+            <p className="text-[10px] text-muted-foreground">選ぶと about:blank のタブで開きます。</p>
+          </div>
+        </div>
+      )}
       {blocked && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 bg-background px-6 text-center">
           {!profile?.deleted && flags.lock_image_url ? (
