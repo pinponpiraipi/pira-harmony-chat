@@ -705,3 +705,29 @@ function CloakSection({ onNote }: { onNote: (s: string) => void }) {
     </GlassPanel>
   );
 }
+
+function CallPopupToggle({ onNote }: { onNote: (s: string) => void }) {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    setOn(window.localStorage.getItem(CALL_POPUP_KEY) === "1");
+  }, []);
+  async function toggle() {
+    const next = !on;
+    if (next && "Notification" in window && Notification.permission !== "granted") {
+      const p = await Notification.requestPermission();
+      if (p !== "granted") onNote("PC通知を許可すると、別のタブを見ていても着信が届きます。");
+    }
+    window.localStorage.setItem(CALL_POPUP_KEY, next ? "1" : "0");
+    setOn(next);
+  }
+  return (
+    <div className="space-y-1 pt-2">
+      <PiraButton variant={on ? "primary" : "soft"} onClick={() => void toggle()}>
+        着信時に応答画面を出す：{on ? "オン" : "オフ"}
+      </PiraButton>
+      <p className="text-[10px] text-muted-foreground">
+        別のタブやアプリを見ていても、着信通知を出して PIRA を前面に出そうとします（PIRA のタブが開いている必要があります）。
+      </p>
+    </div>
+  );
+}
