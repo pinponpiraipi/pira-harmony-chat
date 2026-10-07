@@ -701,6 +701,7 @@ function CloakSection({ onNote }: { onNote: (s: string) => void }) {
       >
         about:blank で開く
       </PiraButton>
+      <CallPopupToggle onNote={onNote} />
     </GlassPanel>
   );
 }

@@ -203,16 +203,7 @@ function TalkPage() {
                 <UserPlus size={16} />
               </button>
             )}
-            <CallCenter
-              conversationId={id}
-              selfId={session.user.id}
-              title={title}
-              avatarPath={
-                conversation?.is_group
-                  ? conversation.icon_url
-                  : profiles.find((p) => p.id !== session.user.id)?.avatar_url
-              }
-            />
+            <CallCenter conversationId={id} />
           </div>
         ) : null
       }
