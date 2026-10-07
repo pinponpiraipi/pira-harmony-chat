@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { THEMES } from "@/lib/pira/types";
 import { getTabMode, openInBlank, setTabMode, type TabMode } from "@/lib/pira/cloak";
 import { getAppFlags } from "@/lib/pira/extras";
+import { CALL_POPUP_KEY } from "@/components/pira/call";
 import { ageFromBirthday } from "@/lib/pira/format";
 import { fileExt, shrinkImage, uploadMedia } from "@/lib/pira/media";
 import {
