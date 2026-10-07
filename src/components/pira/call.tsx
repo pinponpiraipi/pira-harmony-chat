@@ -1,287 +1,530 @@
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Phone, PhoneOff, Video, Mic, MicOff } from "lucide-react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Phone, PhoneOff, Video, Mic, MicOff, Move } from "lucide-react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { Avatar, PiraButton } from "./ui";
+import { Avatar, PiraButton, StoredImage } from "./ui";
+import { usePira } from "@/lib/pira/session";
+import { playSound } from "@/lib/pira/notify";
 
 type Mode = "audio" | "video";
-type CallState = "idle" | "calling" | "incoming" | "live";
+type Phase = "idle" | "incoming" | "calling" | "live";
+type RoomInfo = {
+  cid: string;
+  mode: Mode;
+  title: string;
+  avatar: string | null;
+  cover: string | null;
+  memberIds: string[];
+  names: Record<string, { name: string; avatar: string | null }>;
+};
+type Peer = { id: string; stream: MediaStream | null };
 
 const RTC_CONFIG: RTCConfiguration = {
   iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:global.stun.twilio.com:3478"] }],
 };
 
-/** Voice / video calling for one conversation, signalled over a realtime channel. */
-export function CallCenter({
-  conversationId,
-  selfId,
-  title,
-  avatarPath,
-}: {
-  conversationId: string;
-  selfId: string;
-  title: string;
-  avatarPath?: string | null | undefined;
-}) {
-  const chanRef = useRef<RealtimeChannel | null>(null);
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const localVideo = useRef<HTMLVideoElement | null>(null);
-  const remoteVideo = useRef<HTMLVideoElement | null>(null);
-  const remoteAudio = useRef<HTMLAudioElement | null>(null);
-  const pendingOffer = useRef<RTCSessionDescriptionInit | null>(null);
-  const pendingIce = useRef<RTCIceCandidateInit[]>([]);
-  const [state, setState] = useState<CallState>("idle");
-  const [mode, setMode] = useState<Mode>("audio");
+export const CALL_POPUP_KEY = "pira-call-popup";
+const SELFVIEW_KEY = "pira-selfview";
+
+type CallCtx = { start: (cid: string, mode: Mode) => void; busy: boolean };
+const g = globalThis as unknown as { __piraCallCtx?: React.Context<CallCtx | null> };
+const CallContext = g.__piraCallCtx ?? (g.__piraCallCtx = createContext<CallCtx | null>(null));
+
+async function loadRoom(cid: string, selfId: string, mode: Mode): Promise<RoomInfo | null> {
+  const [{ data: conv }, { data: mem }] = await Promise.all([
+    supabase.from("conversations").select("*").eq("id", cid).maybeSingle(),
+    supabase.from("conversation_members").select("user_id").eq("conversation_id", cid),
+  ]);
+  if (!conv) return null;
+  const memberIds = (mem ?? []).map((m) => m.user_id);
+  const { data: profs } = memberIds.length
+    ? await supabase.from("profiles").select("id, display_name, avatar_url, cover_url").in("id", memberIds)
+    : { data: [] as { id: string; display_name: string; avatar_url: string | null; cover_url: string | null }[] };
+  const names: RoomInfo["names"] = {};
+  (profs ?? []).forEach((p) => (names[p.id] = { name: p.display_name, avatar: p.avatar_url }));
+  const other = (profs ?? []).find((p) => p.id !== selfId);
+  return conv.is_group
+    ? { cid, mode, title: conv.name || "グループ", avatar: conv.icon_url, cover: conv.icon_url, memberIds, names }
+    : {
+        cid,
+        mode,
+        title: other?.display_name ?? "通話",
+        avatar: other?.avatar_url ?? null,
+        cover: other?.cover_url ?? null,
+        memberIds,
+        names,
+      };
+}
+
+function sendTo(topic: string, event: string, payload: Record<string, unknown>) {
+  const ch = supabase.channel(topic);
+  ch.subscribe((status) => {
+    if (status !== "SUBSCRIBED") return;
+    void ch.send({ type: "broadcast", event, payload }).finally(() => {
+      setTimeout(() => void supabase.removeChannel(ch), 800);
+    });
+  });
+}
+
+/** Global voice/video calling: rings people anywhere in PIRA and supports group (mesh) calls. */
+export function CallProvider({ children }: { children: React.ReactNode }) {
+  const { session, flags } = usePira();
+  const selfId = session?.user.id ?? null;
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [room, setRoom] = useState<RoomInfo | null>(null);
+  const [peers, setPeers] = useState<Peer[]>([]);
   const [muted, setMuted] = useState(false);
   const [seconds, setSeconds] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+
+  const roomRef = useRef<RoomInfo | null>(null);
+  roomRef.current = room;
+  const phaseRef = useRef<Phase>("idle");
+  phaseRef.current = phase;
+  const chanRef = useRef<RealtimeChannel | null>(null);
+  const pcs = useRef(new Map<string, RTCPeerConnection>());
+  const pendingIce = useRef(new Map<string, RTCIceCandidateInit[]>());
+  const streamRef = useRef<MediaStream | null>(null);
+  const gotPeer = useRef(false);
+
   useEffect(() => {
-    if (state !== "live") return setSeconds(0);
+    if (phase !== "live") return setSeconds(0);
     const t = setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => clearInterval(t);
-  }, [state]);
-  const fmt = (n: number) => `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
-  const [error, setError] = useState<string | null>(null);
+  }, [phase]);
 
-  const send = useCallback(
+  const removePeer = useCallback((id: string) => {
+    pcs.current.get(id)?.close();
+    pcs.current.delete(id);
+    pendingIce.current.delete(id);
+    setPeers((list) => list.filter((p) => p.id !== id));
+  }, []);
+
+  const cleanup = useCallback(() => {
+    pcs.current.forEach((pc) => pc.close());
+    pcs.current.clear();
+    pendingIce.current.clear();
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setLocalStream(null);
+    if (chanRef.current) void supabase.removeChannel(chanRef.current);
+    chanRef.current = null;
+    gotPeer.current = false;
+    setPeers([]);
+    setMuted(false);
+    setRoom(null);
+    setPhase("idle");
+  }, []);
+
+  const roomSend = useCallback(
     (event: string, payload: Record<string, unknown>) => {
       void chanRef.current?.send({ type: "broadcast", event, payload: { from: selfId, ...payload } });
     },
     [selfId],
   );
 
-  const cleanup = useCallback(() => {
-    pcRef.current?.close();
-    pcRef.current = null;
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    pendingOffer.current = null;
-    pendingIce.current = [];
-    setMuted(false);
-    setState("idle");
-  }, []);
-
-  const attachRemote = useCallback((stream: MediaStream) => {
-    if (remoteVideo.current) remoteVideo.current.srcObject = stream;
-    if (remoteAudio.current) remoteAudio.current.srcObject = stream;
-  }, []);
-
-  const createPeer = useCallback(
-    async (m: Mode) => {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: m === "video",
-      });
-      streamRef.current = stream;
+  const makePeer = useCallback(
+    (id: string) => {
+      const existing = pcs.current.get(id);
+      if (existing) return existing;
       const pc = new RTCPeerConnection(RTC_CONFIG);
-      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+      streamRef.current?.getTracks().forEach((t) => pc.addTrack(t, streamRef.current!));
       pc.onicecandidate = (e) => {
-        if (e.candidate) send("ice", { candidate: e.candidate.toJSON() });
+        if (e.candidate) roomSend("ice", { to: id, candidate: e.candidate.toJSON() });
       };
       pc.ontrack = (e) => {
         const [remote] = e.streams;
-        if (remote) attachRemote(remote);
+        if (!remote) return;
+        setPeers((list) => [...list.filter((p) => p.id !== id), { id, stream: remote }]);
       };
       pc.onconnectionstatechange = () => {
-        if (pc.connectionState === "failed" || pc.connectionState === "closed") cleanup();
+        if (pc.connectionState === "connected") {
+          gotPeer.current = true;
+          setPhase("live");
+        }
+        if (pc.connectionState === "failed" || pc.connectionState === "closed") removePeer(id);
       };
-      pcRef.current = pc;
+      pcs.current.set(id, pc);
+      setPeers((list) => (list.some((p) => p.id === id) ? list : [...list, { id, stream: null }]));
       return pc;
     },
-    [attachRemote, cleanup, send],
+    [roomSend, removePeer],
   );
 
-  const drainIce = useCallback(async () => {
-    const pc = pcRef.current;
-    if (!pc || !pc.remoteDescription) return;
-    const list = pendingIce.current;
-    pendingIce.current = [];
+  const drainIce = useCallback(async (id: string) => {
+    const pc = pcs.current.get(id);
+    if (!pc?.remoteDescription) return;
+    const list = pendingIce.current.get(id) ?? [];
+    pendingIce.current.set(id, []);
     for (const c of list) {
       try {
         await pc.addIceCandidate(c);
       } catch {
-        /* ignore late candidates */
+        /* ignore */
       }
     }
   }, []);
 
-  useEffect(() => {
-    const channel = supabase.channel(`call-${conversationId}`, {
-      config: { broadcast: { self: false } },
-    });
-    chanRef.current = channel;
-    channel
-      .on("broadcast", { event: "offer" }, ({ payload }) => {
-        const p = payload as { from: string; mode: Mode; sdp: RTCSessionDescriptionInit };
-        if (p.from === selfId || pcRef.current) return;
-        pendingOffer.current = p.sdp;
-        setMode(p.mode);
-        setState("incoming");
-      })
-      .on("broadcast", { event: "answer" }, ({ payload }) => {
-        const p = payload as { from: string; sdp: RTCSessionDescriptionInit };
-        if (p.from === selfId) return;
-        const pc = pcRef.current;
-        if (!pc) return;
-        void pc
-          .setRemoteDescription(p.sdp)
-          .then(drainIce)
-          .then(() => setState("live"));
-      })
-      .on("broadcast", { event: "ice" }, ({ payload }) => {
-        const p = payload as { from: string; candidate: RTCIceCandidateInit };
-        if (p.from === selfId) return;
-        pendingIce.current.push(p.candidate);
-        void drainIce();
-      })
-      .on("broadcast", { event: "hangup" }, ({ payload }) => {
-        if ((payload as { from: string }).from === selfId) return;
+  /** Enter the room channel; existing participants send us offers. */
+  const joinRoom = useCallback(
+    async (info: RoomInfo, ringOthers: boolean) => {
+      if (!selfId) return;
+      setError(null);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: info.mode === "video" });
+        streamRef.current = stream;
+        setLocalStream(stream);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "カメラ・マイクを使えませんでした");
         cleanup();
+        return;
+      }
+      const ch = supabase.channel(`room-${info.cid}`, { config: { broadcast: { self: false } } });
+      chanRef.current = ch;
+      ch.on("broadcast", { event: "join" }, ({ payload }) => {
+        const p = payload as { from: string };
+        if (p.from === selfId) return;
+        const pc = makePeer(p.from);
+        void pc
+          .createOffer()
+          .then((o) => pc.setLocalDescription(o).then(() => roomSend("offer", { to: p.from, sdp: o })));
+      })
+        .on("broadcast", { event: "offer" }, ({ payload }) => {
+          const p = payload as { from: string; to: string; sdp: RTCSessionDescriptionInit };
+          if (p.to !== selfId) return;
+          gotPeer.current = true;
+          const pc = makePeer(p.from);
+          void (async () => {
+            await pc.setRemoteDescription(p.sdp);
+            await drainIce(p.from);
+            const a = await pc.createAnswer();
+            await pc.setLocalDescription(a);
+            roomSend("answer", { to: p.from, sdp: a });
+          })();
+        })
+        .on("broadcast", { event: "answer" }, ({ payload }) => {
+          const p = payload as { from: string; to: string; sdp: RTCSessionDescriptionInit };
+          if (p.to !== selfId) return;
+          const pc = pcs.current.get(p.from);
+          if (pc) void pc.setRemoteDescription(p.sdp).then(() => drainIce(p.from));
+        })
+        .on("broadcast", { event: "ice" }, ({ payload }) => {
+          const p = payload as { from: string; to: string; candidate: RTCIceCandidateInit };
+          if (p.to !== selfId) return;
+          const list = pendingIce.current.get(p.from) ?? [];
+          list.push(p.candidate);
+          pendingIce.current.set(p.from, list);
+          void drainIce(p.from);
+        })
+        .on("broadcast", { event: "leave" }, ({ payload }) => {
+          const id = (payload as { from: string }).from;
+          removePeer(id);
+          // A 1:1 call ends when the other person leaves.
+          const r = roomRef.current;
+          if (r && r.memberIds.length <= 2 && pcs.current.size === 0) cleanup();
+        })
+        .subscribe((status) => {
+          if (status !== "SUBSCRIBED") return;
+          roomSend("join", {});
+          if (!ringOthers) return;
+          // If nobody answers our join, the call is new: ring everyone else.
+          setTimeout(() => {
+            if (gotPeer.current || chanRef.current !== ch) return;
+            info.memberIds
+              .filter((id) => id !== selfId)
+              .forEach((id) => sendTo(`ring-${id}`, "invite", { cid: info.cid, mode: info.mode, from: selfId }));
+          }, 1500);
+        });
+    },
+    [selfId, makePeer, roomSend, drainIce, removePeer, cleanup],
+  );
+
+  const start = useCallback(
+    (cid: string, mode: Mode) => {
+      if (!selfId || phaseRef.current !== "idle") return;
+      setPhase("calling");
+      void loadRoom(cid, selfId, mode).then((info) => {
+        if (!info) return cleanup();
+        setRoom(info);
+        void joinRoom(info, true);
+      });
+    },
+    [selfId, joinRoom, cleanup],
+  );
+
+  const hangup = useCallback(() => {
+    const r = roomRef.current;
+    roomSend("leave", {});
+    if (r && selfId && !gotPeer.current && phaseRef.current === "calling") {
+      r.memberIds
+        .filter((id) => id !== selfId)
+        .forEach((id) => sendTo(`ring-${id}`, "cancel", { cid: r.cid, from: selfId }));
+    }
+    cleanup();
+  }, [roomSend, selfId, cleanup]);
+
+  const accept = useCallback(() => {
+    const r = roomRef.current;
+    if (!r) return;
+    setPhase("calling");
+    void joinRoom(r, false);
+  }, [joinRoom]);
+
+  const decline = useCallback(() => {
+    setRoom(null);
+    setPhase("idle");
+  }, []);
+
+  // Personal ring channel: incoming calls arrive wherever you are in PIRA.
+  useEffect(() => {
+    if (!selfId) return;
+    const ch = supabase
+      .channel(`ring-${selfId}`)
+      .on("broadcast", { event: "invite" }, ({ payload }) => {
+        const p = payload as { cid: string; mode: Mode; from: string };
+        if (phaseRef.current !== "idle") return;
+        void loadRoom(p.cid, selfId, p.mode).then((info) => {
+          if (!info || phaseRef.current !== "idle") return;
+          if (!info.names[p.from]) return;
+          setRoom(info);
+          setPhase("incoming");
+          const caller = info.names[p.from]?.name ?? info.title;
+          if (window.localStorage.getItem(CALL_POPUP_KEY) === "1") {
+            try {
+              window.focus();
+              window.parent?.focus();
+            } catch {
+              /* ignore */
+            }
+            if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+              const n = new Notification(`PIRA ${p.mode === "video" ? "ビデオ" : "音声"}通話の着信`, {
+                body: `${caller} から着信中`,
+                requireInteraction: true,
+                tag: "pira-call",
+              });
+              n.onclick = () => {
+                window.focus();
+                n.close();
+              };
+            }
+          }
+        });
+      })
+      .on("broadcast", { event: "cancel" }, ({ payload }) => {
+        const p = payload as { cid: string };
+        if (phaseRef.current === "incoming" && roomRef.current?.cid === p.cid) {
+          setRoom(null);
+          setPhase("idle");
+        }
       })
       .subscribe();
     return () => {
-      void supabase.removeChannel(channel);
-      chanRef.current = null;
+      void supabase.removeChannel(ch);
     };
-  }, [conversationId, selfId, cleanup, drainIce]);
+  }, [selfId]);
 
+  // Ringtone while a call is coming in.
   useEffect(() => {
-    return () => {
-      pcRef.current?.close();
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    };
-  }, []);
+    if (phase !== "incoming" || flags.notifications_off) return;
+    playSound("bell", 0.7);
+    const t = setInterval(() => playSound("bell", 0.7), 1400);
+    return () => clearInterval(t);
+  }, [phase, flags.notifications_off]);
 
-  // Local preview appears only once the overlay is mounted.
-  useEffect(() => {
-    if (localVideo.current && streamRef.current) localVideo.current.srcObject = streamRef.current;
-  }, [state, mode]);
-
-  async function startCall(m: Mode) {
-    setError(null);
-    setMode(m);
-    setState("calling");
-    try {
-      const pc = await createPeer(m);
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      send("offer", { mode: m, sdp: offer });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "カメラ・マイクを使えませんでした");
-      cleanup();
-    }
-  }
-
-  async function accept() {
-    const sdp = pendingOffer.current;
-    if (!sdp) return;
-    setError(null);
-    try {
-      const pc = await createPeer(mode);
-      await pc.setRemoteDescription(sdp);
-      await drainIce();
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      send("answer", { sdp: answer });
-      pendingOffer.current = null;
-      setState("live");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "カメラ・マイクを使えませんでした");
-      cleanup();
-    }
-  }
-
-  function hangup() {
-    send("hangup", {});
-    cleanup();
-  }
+  useEffect(() => () => cleanup(), [cleanup]);
 
   function toggleMute() {
-    const stream = streamRef.current;
-    if (!stream) return;
+    const s = streamRef.current;
+    if (!s) return;
     const next = !muted;
-    stream.getAudioTracks().forEach((t) => (t.enabled = !next));
+    s.getAudioTracks().forEach((t) => (t.enabled = !next));
     setMuted(next);
   }
 
-  return (
-    <>
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => void startCall("audio")}
-          aria-label="音声通話をかける"
-          className="rounded-full glass-soft p-2 text-foreground"
-        >
-          <Phone size={16} />
-        </button>
-        <button
-          onClick={() => void startCall("video")}
-          aria-label="ビデオ通話をかける"
-          className="rounded-full glass-soft p-2 text-foreground"
-        >
-          <Video size={16} />
-        </button>
-      </div>
+  const fmt = (n: number) => `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
+  const showVideo = room?.mode === "video" && phase === "live";
+  const isGroup = (room?.memberIds.length ?? 0) > 2;
 
-      {state !== "idle" &&
+  return (
+    <CallContext.Provider value={{ start, busy: phase !== "idle" }}>
+      {children}
+      {phase !== "idle" &&
+        room &&
         createPortal(
-        <div className="fixed inset-0 z-50 flex flex-col bg-background" role="dialog" aria-label="通話画面">
-          {mode === "video" && (
-            <video
-              ref={remoteVideo}
-              autoPlay
-              playsInline
-              className={`absolute inset-0 h-full w-full object-cover ${state === "live" ? "" : "opacity-0"}`}
-            />
-          )}
-          <audio ref={remoteAudio} autoPlay />
-          <div className="relative flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
-            {!(mode === "video" && state === "live") && (
+          <div className="fixed inset-0 z-[90] flex flex-col overflow-hidden bg-background" role="dialog" aria-label="通話画面">
+            {!showVideo && room.cover && (
               <>
-                <div className={state === "live" ? "" : "animate-pulse"}>
-                  <Avatar path={avatarPath} name={title} size={160} />
-                </div>
-                <p className="font-display text-2xl font-bold text-foreground">{title}</p>
-                <p className="text-sm text-muted-foreground">
-                  {state === "calling"
-                    ? "呼び出し中…"
-                    : state === "incoming"
-                      ? `${mode === "video" ? "ビデオ" : "音声"}通話の着信`
-                      : `通話中 ${fmt(seconds)}`}
-                </p>
+                <StoredImage path={room.cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                <div className="absolute inset-0 bg-background/45" />
               </>
             )}
-            {error && <p className="text-sm text-destructive">{error}</p>}
-          </div>
-          {mode === "video" && (
-            <video
-              ref={localVideo}
-              autoPlay
-              playsInline
-              muted
-              className="absolute right-4 top-4 h-40 w-28 rounded-xl object-cover ring-2 ring-border"
-            />
-          )}
-          <div className="relative flex flex-wrap justify-center gap-3 pb-10">
-            {state === "incoming" && (
-              <PiraButton onClick={() => void accept()}>
-                <Phone size={14} /> 応答する
-              </PiraButton>
+            {peers.map((p) => (
+              <AudioSink key={p.id} stream={p.stream} />
+            ))}
+            {showVideo ? (
+              <div
+                className={`relative grid flex-1 gap-1 ${peers.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}
+              >
+                {peers.map((p) => (
+                  <div key={p.id} className="relative min-h-0 overflow-hidden bg-card">
+                    <VideoTile stream={p.stream} />
+                    <span className="absolute bottom-2 left-2 rounded-full glass-soft px-2 py-0.5 text-xs text-foreground">
+                      {room.names[p.id]?.name ?? ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="relative flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
+                <div className={phase === "live" ? "" : "animate-pulse"}>
+                  <Avatar path={room.avatar} name={room.title} size={160} />
+                </div>
+                <p className="font-display text-2xl font-bold text-foreground">{room.title}</p>
+                <p className="text-sm text-foreground/80">
+                  {phase === "calling"
+                    ? "呼び出し中…"
+                    : phase === "incoming"
+                      ? `${room.mode === "video" ? "ビデオ" : "音声"}通話の着信`
+                      : `通話中 ${fmt(seconds)}`}
+                </p>
+                {isGroup && peers.length > 0 && (
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {peers.map((p) => (
+                      <div key={p.id} className="flex flex-col items-center gap-1">
+                        <Avatar path={room.names[p.id]?.avatar} name={room.names[p.id]?.name ?? "?"} size={48} />
+                        <span className="text-xs text-foreground">{room.names[p.id]?.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {error && <p className="text-sm text-destructive">{error}</p>}
+              </div>
             )}
-            {state === "live" && (
-              <PiraButton variant="soft" onClick={toggleMute}>
-                {muted ? <MicOff size={14} /> : <Mic size={14} />}
-                {muted ? "ミュート解除" : "ミュート"}
-              </PiraButton>
+            {showVideo && (
+              <p className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full glass-soft px-3 py-1 text-xs text-foreground">
+                {room.title} ・ {fmt(seconds)}
+              </p>
             )}
-            <PiraButton variant="danger" onClick={hangup}>
-              <PhoneOff size={14} /> {state === "incoming" ? "拒否" : "終了"}
-            </PiraButton>
-          </div>
-        </div>,
-        document.body,
-      )}
-    </>
+            {room.mode === "video" && localStream && phase !== "incoming" && <SelfView stream={localStream} />}
+            <div className="relative flex flex-wrap justify-center gap-3 pb-10 pt-3">
+              {phase === "incoming" && (
+                <PiraButton onClick={accept}>
+                  <Phone size={14} /> 応答する
+                </PiraButton>
+              )}
+              {phase !== "incoming" && (
+                <PiraButton variant="soft" onClick={toggleMute}>
+                  {muted ? <MicOff size={14} /> : <Mic size={14} />}
+                  {muted ? "ミュート解除" : "ミュート"}
+                </PiraButton>
+              )}
+              <PiraButton variant="danger" onClick={phase === "incoming" ? decline : hangup}>
+                <PhoneOff size={14} /> {phase === "incoming" ? "拒否" : "終了"}
+              </PiraButton>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </CallContext.Provider>
+  );
+}
+
+function AudioSink({ stream }: { stream: MediaStream | null }) {
+  const ref = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.srcObject = stream;
+  }, [stream]);
+  return <audio ref={ref} autoPlay />;
+}
+
+function VideoTile({ stream }: { stream: MediaStream | null }) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.srcObject = stream;
+  }, [stream]);
+  return <video ref={ref} autoPlay playsInline muted className="h-full w-full object-cover" />;
+}
+
+/** Your own camera preview. Drag to move, drag the corner to resize; saved on this device only. */
+function SelfView({ stream }: { stream: MediaStream }) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  const [box, setBox] = useState({ x: 16, y: 16, w: 128 });
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(SELFVIEW_KEY) ?? "null");
+      if (saved && typeof saved.w === "number") setBox(saved);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  useEffect(() => {
+    if (ref.current) ref.current.srcObject = stream;
+  }, [stream]);
+
+  function drag(e: React.PointerEvent, kind: "move" | "size") {
+    e.preventDefault();
+    e.stopPropagation();
+    const sx = e.clientX;
+    const sy = e.clientY;
+    const start = box;
+    let latest = box;
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - sx;
+      const dy = ev.clientY - sy;
+      const w = kind === "size" ? Math.min(window.innerWidth * 0.9, Math.max(80, start.w + dx)) : start.w;
+      const h = (w * 4) / 3;
+      const x = kind === "move" ? Math.min(window.innerWidth - w, Math.max(0, start.x + dx)) : start.x;
+      const y = kind === "move" ? Math.min(window.innerHeight - h, Math.max(0, start.y + dy)) : start.y;
+      latest = { x, y, w };
+      setBox(latest);
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.localStorage.setItem(SELFVIEW_KEY, JSON.stringify(latest));
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
+
+  return (
+    <div
+      className="absolute z-10 cursor-move touch-none overflow-hidden rounded-xl ring-2 ring-border"
+      style={{ left: box.x, top: box.y, width: box.w, height: (box.w * 4) / 3 }}
+      onPointerDown={(e) => drag(e, "move")}
+    >
+      <video ref={ref} autoPlay playsInline muted className="pointer-events-none h-full w-full -scale-x-100 object-cover" />
+      <Move size={12} className="pointer-events-none absolute left-1 top-1 text-foreground/80" />
+      <div
+        aria-label="大きさを変える"
+        className="absolute bottom-0 right-0 h-5 w-5 cursor-nwse-resize rounded-tl-lg bg-foreground/60"
+        onPointerDown={(e) => drag(e, "size")}
+      />
+    </div>
+  );
+}
+
+/** Call buttons for a chat header. Pressing one in a group with a call in progress joins it. */
+export function CallCenter({ conversationId }: { conversationId: string }) {
+  const ctx = useContext(CallContext);
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => ctx?.start(conversationId, "audio")}
+        aria-label="音声通話"
+        className="rounded-full glass-soft p-2 text-foreground"
+      >
+        <Phone size={16} />
+      </button>
+      <button
+        onClick={() => ctx?.start(conversationId, "video")}
+        aria-label="ビデオ通話"
+        className="rounded-full glass-soft p-2 text-foreground"
+      >
+        <Video size={16} />
+      </button>
+    </div>
   );
 }

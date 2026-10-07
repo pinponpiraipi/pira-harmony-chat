@@ -17,6 +17,7 @@ import { notify } from "./notify";
 import { listChats } from "./db";
 import { setUnreadFavicon } from "./favicon";
 import { StoredImage } from "@/components/pira/ui";
+import { CallProvider } from "@/components/pira/call";
 import { needsModeChoice, openInBlank, setTabMode, type TabMode } from "./cloak";
 
 export const USERNAME_DOMAIN = "pira.local";
@@ -250,7 +251,7 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <PiraContext.Provider value={value}>
-      {children}
+      <CallProvider>{children}</CallProvider>
       {choose && !blocked && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-background/80 px-6 backdrop-blur">
           <div className="glass w-full max-w-sm space-y-3 rounded-2xl p-5 text-center">
