@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Video, FileAudio } from "lucide-react";
+import { Phone, PhoneIncoming, PhoneMissed, PhoneOutgoing, Video } from "lucide-react";
 import { AppShell } from "@/components/pira/shell";
 import { Avatar, GlassPanel } from "@/components/pira/ui";
 import { useCall } from "@/components/pira/call";
@@ -107,9 +107,6 @@ function CallsPage() {
               {k === "all" ? "すべて" : "不在着信"}
             </button>
           ))}
-          <Link to="/recordings" className="ml-auto inline-flex items-center gap-1 rounded-full glass-soft px-3 py-1.5 text-xs font-semibold text-foreground">
-            <FileAudio size={12} /> 録音の文字起こし
-          </Link>
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1">
