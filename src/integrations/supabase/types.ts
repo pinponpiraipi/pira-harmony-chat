@@ -74,6 +74,80 @@ export type Database = {
         }
         Relationships: []
       }
+      call_logs: {
+        Row: {
+          answered_at: string | null
+          caller_id: string
+          conversation_id: string
+          created_at: string
+          duration_sec: number
+          ended_at: string | null
+          id: string
+          mode: string
+          status: string
+        }
+        Insert: {
+          answered_at?: string | null
+          caller_id: string
+          conversation_id: string
+          created_at?: string
+          duration_sec?: number
+          ended_at?: string | null
+          id?: string
+          mode?: string
+          status?: string
+        }
+        Update: {
+          answered_at?: string | null
+          caller_id?: string
+          conversation_id?: string
+          created_at?: string
+          duration_sec?: number
+          ended_at?: string | null
+          id?: string
+          mode?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_logs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      call_transcripts: {
+        Row: {
+          consent: boolean
+          created_at: string
+          id: string
+          owner_id: string
+          summary: string
+          title: string
+          transcript: string
+        }
+        Insert: {
+          consent?: boolean
+          created_at?: string
+          id?: string
+          owner_id: string
+          summary?: string
+          title?: string
+          transcript?: string
+        }
+        Update: {
+          consent?: boolean
+          created_at?: string
+          id?: string
+          owner_id?: string
+          summary?: string
+          title?: string
+          transcript?: string
+        }
+        Relationships: []
+      }
       conversation_members: {
         Row: {
           conversation_id: string
@@ -286,6 +360,7 @@ export type Database = {
           quiet_hours: Json
           sound: string
           sound_url: string | null
+          tones: Json
           updated_at: string
           user_id: string
           volume: number
@@ -296,6 +371,7 @@ export type Database = {
           quiet_hours?: Json
           sound?: string
           sound_url?: string | null
+          tones?: Json
           updated_at?: string
           user_id: string
           volume?: number
@@ -306,6 +382,7 @@ export type Database = {
           quiet_hours?: Json
           sound?: string
           sound_url?: string | null
+          tones?: Json
           updated_at?: string
           user_id?: string
           volume?: number
