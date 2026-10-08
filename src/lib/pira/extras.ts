@@ -141,7 +141,7 @@ export type ToneKind = "message" | "audio" | "video";
 export type Tones = Partial<Record<ToneKind, Tone>>;
 
 export const TONE_DEFAULTS: Record<ToneKind, Tone> = {
-  message: { sound: "pop", sound_url: null, start: 0, duration: 3 },
+  message: { sound: "pop", sound_url: null, start: 0, duration: 1 },
   audio: { sound: "bell", sound_url: null, start: 0, duration: 10 },
   video: { sound: "marimba", sound_url: null, start: 0, duration: 10 },
 };
