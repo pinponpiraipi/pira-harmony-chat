@@ -8,6 +8,7 @@ import {
   Smartphone,
   Smile,
   Shield,
+  Phone,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { usePira } from "@/lib/pira/session";
@@ -26,6 +27,7 @@ export function PiraClock() {
 const BASE_NAV = [
   { to: "/", label: "ホーム", icon: Home },
   { to: "/talks", label: "トーク", icon: MessageCircle },
+  { to: "/calls", label: "通話", icon: Phone },
   { to: "/add", label: "友だち", icon: UserPlus },
   { to: "/stickers", label: "スタンプ", icon: Smile },
   { to: "/settings", label: "設定", icon: Settings },

@@ -563,3 +563,8 @@ export function CallCenter({ conversationId }: { conversationId: string }) {
     </div>
   );
 }
+
+/** Start (or join) a call from anywhere, e.g. call history or profile pages. */
+export function useCall() {
+  return useContext(CallContext);
+}
