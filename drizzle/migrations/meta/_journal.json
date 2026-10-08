@@ -8,6 +8,13 @@
       "when": 1791167842329,
       "tag": "0000_lock_image_admin_send_cloak",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791418068413,
+      "tag": "0001_calls_tones_transcripts",
+      "breakpoints": true
     }
   ]
 }

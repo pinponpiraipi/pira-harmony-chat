@@ -5,7 +5,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, PiraButton, StoredImage } from "./ui";
 import { usePira } from "@/lib/pira/session";
-import { playSound } from "@/lib/pira/notify";
+import { playKind, stopTone } from "@/lib/pira/notify";
 
 type Mode = "audio" | "video";
 type Phase = "idle" | "incoming" | "calling" | "live";
@@ -69,7 +69,24 @@ function sendTo(topic: string, event: string, payload: Record<string, unknown>) 
 
 /** Global voice/video calling: rings people anywhere in PIRA and supports group (mesh) calls. */
 export function CallProvider({ children }: { children: React.ReactNode }) {
-  const { session, flags } = usePira();
+  const { session, flags, notifySettings } = usePira();
+  const logRef = useRef<{ id: string | null; answeredAt: number | null }>({ id: null, answeredAt: null });
+  const markAnswered = useCallback(() => {
+    const l = logRef.current;
+    if (!l.id || l.answeredAt) return;
+    l.answeredAt = Date.now();
+    void supabase.from("call_logs").update({ status: "answered", answered_at: new Date().toISOString() }).eq("id", l.id);
+  }, []);
+  const closeLog = useCallback(() => {
+    const l = logRef.current;
+    if (l.id && l.answeredAt) {
+      void supabase
+        .from("call_logs")
+        .update({ ended_at: new Date().toISOString(), duration_sec: Math.round((Date.now() - l.answeredAt) / 1000) })
+        .eq("id", l.id);
+    }
+    logRef.current = { id: null, answeredAt: null };
+  }, []);
   const selfId = session?.user.id ?? null;
   const [phase, setPhase] = useState<Phase>("idle");
   const [room, setRoom] = useState<RoomInfo | null>(null);
@@ -88,6 +105,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const pendingIce = useRef(new Map<string, RTCIceCandidateInit[]>());
   const streamRef = useRef<MediaStream | null>(null);
   const gotPeer = useRef(false);
+  const incomingLog = useRef<string | null>(null);
 
   useEffect(() => {
     if (phase !== "live") return setSeconds(0);
@@ -103,6 +121,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const cleanup = useCallback(() => {
+    closeLog();
     pcs.current.forEach((pc) => pc.close());
     pcs.current.clear();
     pendingIce.current.clear();
@@ -116,7 +135,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     setMuted(false);
     setRoom(null);
     setPhase("idle");
-  }, []);
+  }, [closeLog]);
 
   const roomSend = useCallback(
     (event: string, payload: Record<string, unknown>) => {
@@ -142,6 +161,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === "connected") {
           gotPeer.current = true;
+          markAnswered();
           setPhase("live");
         }
         if (pc.connectionState === "failed" || pc.connectionState === "closed") removePeer(id);
@@ -150,7 +170,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       setPeers((list) => (list.some((p) => p.id === id) ? list : [...list, { id, stream: null }]));
       return pc;
     },
-    [roomSend, removePeer],
+    [roomSend, removePeer, markAnswered],
   );
 
   const drainIce = useCallback(async (id: string) => {
@@ -234,7 +254,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             if (gotPeer.current || chanRef.current !== ch) return;
             info.memberIds
               .filter((id) => id !== selfId)
-              .forEach((id) => sendTo(`ring-${id}`, "invite", { cid: info.cid, mode: info.mode, from: selfId }));
+              .forEach((id) =>
+                sendTo(`ring-${id}`, "invite", { cid: info.cid, mode: info.mode, from: selfId, logId: logRef.current.id }),
+              );
           }, 1500);
         });
     },
@@ -248,6 +270,14 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       void loadRoom(cid, selfId, mode).then((info) => {
         if (!info) return cleanup();
         setRoom(info);
+        void supabase
+          .from("call_logs")
+          .insert({ conversation_id: cid, caller_id: selfId, mode, status: "missed" })
+          .select("id")
+          .single()
+          .then(({ data }) => {
+            if (data && !logRef.current.id) logRef.current = { id: data.id, answeredAt: null };
+          });
         void joinRoom(info, true);
       });
     },
@@ -268,11 +298,16 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const accept = useCallback(() => {
     const r = roomRef.current;
     if (!r) return;
+    logRef.current = { id: incomingLog.current, answeredAt: null };
+    incomingLog.current = null;
     setPhase("calling");
     void joinRoom(r, false);
   }, [joinRoom]);
 
   const decline = useCallback(() => {
+    const id = incomingLog.current;
+    if (id) void supabase.from("call_logs").update({ status: "declined" }).eq("id", id).eq("status", "missed");
+    incomingLog.current = null;
     setRoom(null);
     setPhase("idle");
   }, []);
@@ -283,8 +318,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     const ch = supabase
       .channel(`ring-${selfId}`)
       .on("broadcast", { event: "invite" }, ({ payload }) => {
-        const p = payload as { cid: string; mode: Mode; from: string };
+        const p = payload as { cid: string; mode: Mode; from: string; logId?: string | null };
         if (phaseRef.current !== "idle") return;
+        incomingLog.current = p.logId ?? null;
         void loadRoom(p.cid, selfId, p.mode).then((info) => {
           if (!info || phaseRef.current !== "idle") return;
           if (!info.names[p.from]) return;
@@ -327,11 +363,10 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
   // Ringtone while a call is coming in.
   useEffect(() => {
-    if (phase !== "incoming" || flags.notifications_off) return;
-    playSound("bell", 0.7);
-    const t = setInterval(() => playSound("bell", 0.7), 1400);
-    return () => clearInterval(t);
-  }, [phase, flags.notifications_off]);
+    if (phase !== "incoming" || flags.notifications_off || !notifySettings.enabled) return;
+    void playKind(notifySettings, roomRef.current?.mode === "video" ? "video" : "audio", true);
+    return () => stopTone();
+  }, [phase, flags.notifications_off, notifySettings]);
 
   useEffect(() => () => cleanup(), [cleanup]);
 
@@ -527,4 +562,9 @@ export function CallCenter({ conversationId }: { conversationId: string }) {
       </button>
     </div>
   );
+}
+
+/** Start (or join) a call from anywhere, e.g. call history or profile pages. */
+export function useCall() {
+  return useContext(CallContext);
 }

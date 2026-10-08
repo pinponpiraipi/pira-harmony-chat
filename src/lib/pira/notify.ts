@@ -1,4 +1,4 @@
-import type { NotifySettings, QuietWindow } from "./extras";
+import { toneFor, type NotifySettings, type QuietWindow, type Tone, type ToneKind } from "./extras";
 import { resolveMedia } from "./media";
 
 export const SOUNDS = [
@@ -61,6 +61,66 @@ export async function playCustomSound(path: string, volume = 0.6) {
   void customAudio.play().catch(() => undefined);
 }
 
+let toneAudio: HTMLAudioElement | null = null;
+let toneTimer: ReturnType<typeof setTimeout> | null = null;
+let toneLoop: ReturnType<typeof setInterval> | null = null;
+
+/** Stops whatever tone is currently playing. */
+export function stopTone() {
+  if (toneTimer) clearTimeout(toneTimer);
+  if (toneLoop) clearInterval(toneLoop);
+  toneTimer = toneLoop = null;
+  if (toneAudio) {
+    toneAudio.pause();
+    toneAudio = null;
+  }
+}
+
+/**
+ * Plays a tone. Uploaded audio/video files start at `start` seconds and play for
+ * `duration` seconds (looping when the file is shorter). Presets repeat for `duration`.
+ * `loop` keeps going until stopTone() (used for ringing).
+ */
+export async function playTone(tone: Tone, volume = 0.6, loop = false) {
+  if (typeof window === "undefined") return;
+  stopTone();
+  const length = Math.max(0.2, tone.duration || 3);
+  if (tone.sound_url) {
+    const url = await resolveMedia(tone.sound_url);
+    if (!url) return;
+    const a = new Audio(url);
+    toneAudio = a;
+    a.volume = Math.min(1, Math.max(0, volume));
+    const startAt = Math.max(0, tone.start || 0);
+    const restart = () => {
+      a.currentTime = startAt;
+      void a.play().catch(() => undefined);
+    };
+    a.addEventListener("ended", () => toneAudio === a && restart());
+    restart();
+    const cycle = () => {
+      if (toneAudio !== a) return;
+      if (loop) restart();
+      else stopTone();
+    };
+    if (loop) toneLoop = setInterval(cycle, length * 1000);
+    else toneTimer = setTimeout(cycle, length * 1000);
+    return;
+  }
+  playSound(tone.sound, volume);
+  const every = 1400;
+  let elapsed = every;
+  toneLoop = setInterval(() => {
+    if (!loop && elapsed >= length * 1000) return stopTone();
+    elapsed += every;
+    playSound(tone.sound, volume);
+  }, every);
+}
+
+export function playKind(settings: NotifySettings, kind: ToneKind, loop = false) {
+  return playTone(toneFor(settings, kind), settings.volume, loop);
+}
+
 function jstMinutes() {
   const parts = new Intl.DateTimeFormat("ja-JP", {
     hour: "2-digit",
@@ -106,8 +166,7 @@ export function notify(
   if (globalOff) return;
   if (!settings.enabled) return;
   if (inQuietHours([...settings.quiet_hours, ...globalQuiet])) return;
-  if (settings.sound_url) void playCustomSound(settings.sound_url, settings.volume);
-  else playSound(settings.sound, settings.volume);
+  void playKind(settings, "message");
   if (
     settings.desktop &&
     typeof Notification !== "undefined" &&
