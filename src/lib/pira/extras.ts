@@ -132,7 +132,26 @@ export type NotifySettings = {
   desktop: boolean;
   quiet_hours: QuietWindow[];
   sound_url: string | null;
+  tones: Tones;
 };
+
+/** One notification tone: preset or uploaded file, with optional start/length (seconds). */
+export type Tone = { sound: string; sound_url: string | null; start: number; duration: number };
+export type ToneKind = "message" | "audio" | "video";
+export type Tones = Partial<Record<ToneKind, Tone>>;
+
+export const TONE_DEFAULTS: Record<ToneKind, Tone> = {
+  message: { sound: "pop", sound_url: null, start: 0, duration: 3 },
+  audio: { sound: "bell", sound_url: null, start: 0, duration: 10 },
+  video: { sound: "marimba", sound_url: null, start: 0, duration: 10 },
+};
+
+export function toneFor(s: NotifySettings, kind: ToneKind): Tone {
+  const t = s.tones?.[kind];
+  if (t) return { ...TONE_DEFAULTS[kind], ...t };
+  if (kind === "message") return { ...TONE_DEFAULTS.message, sound: s.sound, sound_url: s.sound_url };
+  return TONE_DEFAULTS[kind];
+}
 
 export const DEFAULT_NOTIFY: Omit<NotifySettings, "user_id"> = {
   enabled: true,
@@ -141,6 +160,7 @@ export const DEFAULT_NOTIFY: Omit<NotifySettings, "user_id"> = {
   desktop: true,
   quiet_hours: [],
   sound_url: null,
+  tones: {},
 };
 
 export async function getNotifySettings(userId: string): Promise<NotifySettings> {
@@ -158,6 +178,7 @@ export async function getNotifySettings(userId: string): Promise<NotifySettings>
     desktop: data.desktop,
     quiet_hours: (data.quiet_hours ?? []) as QuietWindow[],
     sound_url: (data as { sound_url?: string | null }).sound_url ?? null,
+    tones: ((data as { tones?: unknown }).tones ?? {}) as Tones,
   };
 }
 
@@ -171,6 +192,7 @@ export async function saveNotifySettings(s: NotifySettings) {
       desktop: s.desktop,
       quiet_hours: s.quiet_hours,
       sound_url: s.sound_url,
+      tones: s.tones as never,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id" },
