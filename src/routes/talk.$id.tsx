@@ -1,6 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { adminRemoveMember } from "@/lib/pira/admin.functions";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Image as ImageIcon, Send, Trash2, Reply, X, Smile, Cake, UserPlus } from "lucide-react";
+import { Image as ImageIcon, Send, Trash2, Reply, X, Smile, Cake, UserPlus, Users } from "lucide-react";
 import { AppShell } from "@/components/pira/shell";
 import {
   Avatar,
@@ -48,7 +50,9 @@ export const Route = createFileRoute("/talk/$id")({
 
 function TalkPage() {
   const { id } = Route.useParams();
-  const { session } = usePira();
+  const { session, isAdmin } = usePira();
+  const removeMemberFn = useServerFn(adminRemoveMember);
+  const [showMembers, setShowMembers] = useState(false);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -196,6 +200,15 @@ function TalkPage() {
           <div className="flex items-center gap-2">
             {conversation?.is_group && (
               <button
+                onClick={() => setShowMembers(true)}
+                aria-label="メンバー一覧"
+                className="rounded-full glass-soft p-2 text-foreground"
+              >
+                <Users size={16} />
+              </button>
+            )}
+            {conversation?.is_group && (
+              <button
                 onClick={() => void openInvite()}
                 aria-label="メンバーを追加"
                 className="rounded-full glass-soft p-2 text-foreground"
@@ -208,6 +221,46 @@ function TalkPage() {
         ) : null
       }
     >
+      {showMembers && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-background/70 px-4">
+          <GlassPanel className="w-full max-w-sm space-y-2 p-4">
+            <p className="text-sm font-bold text-foreground">メンバー {members.length}</p>
+            <div className="pira-scroll max-h-72 space-y-1 overflow-y-auto">
+              {members.map((m) => {
+                const pr = profileOf(m.user_id);
+                return (
+                  <div key={m.id} className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm text-foreground">
+                    <Link to="/u/$id" params={{ id: m.user_id }} className="flex min-w-0 flex-1 items-center gap-2">
+                      <Avatar path={pr?.avatar_url} name={pr?.display_name ?? "?"} size={28} />
+                      <span className="truncate">{pr?.display_name ?? "不明"}</span>
+                    </Link>
+                    {isAdmin && m.user_id !== session?.user.id && (
+                      <PiraButton
+                        variant="danger"
+                        onClick={async () => {
+                          try {
+                            await removeMemberFn({ data: { conversationId: id, userId: m.user_id } });
+                            await load();
+                          } catch (err) {
+                            alert(err instanceof Error ? err.message : String(err));
+                          }
+                        }}
+                      >
+                        <Trash2 size={12} /> 外す
+                      </PiraButton>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex justify-end">
+              <PiraButton variant="ghost" onClick={() => setShowMembers(false)}>
+                閉じる
+              </PiraButton>
+            </div>
+          </GlassPanel>
+        </div>
+      )}
       {inviteList && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-background/70 px-4">
           <GlassPanel className="w-full max-w-sm space-y-2 p-4">
@@ -264,7 +317,11 @@ function TalkPage() {
             const mine_reactions = reactions.filter((r) => r.message_id === m.id);
             return (
               <div key={m.id} className={`flex gap-2 ${mine ? "flex-row-reverse" : ""}`}>
-                {!mine && <Avatar path={author?.avatar_url} name={author?.display_name ?? "?"} size={32} />}
+                {!mine && (
+                  <Link to="/u/$id" params={{ id: m.sender_id }} aria-label="プロフィールを見る">
+                    <Avatar path={author?.avatar_url} name={author?.display_name ?? "?"} size={32} />
+                  </Link>
+                )}
                 <div className={`max-w-[75%] ${mine ? "items-end text-right" : ""} flex flex-col gap-1`}>
                   {!mine && conversation?.is_group && (
                     <span className="text-[10px] text-muted-foreground">{author?.display_name}</span>

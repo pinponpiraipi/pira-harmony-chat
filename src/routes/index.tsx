@@ -95,7 +95,7 @@ function HomePage() {
       <div className="space-y-3">
         <GlassPanel className="p-4">
           <div className="flex items-center gap-3">
-            <Link to="/u/$id" params={{ id: session!.user.id }} replace>
+            <Link to="/u/$id" params={{ id: session!.user.id }}>
               <Avatar path={profile?.avatar_url} name={profile?.display_name ?? "P"} size={56} />
             </Link>
             <div className="min-w-0 flex-1">
@@ -125,7 +125,7 @@ function HomePage() {
             <div className="mt-2 space-y-2">
               {birthdays.map((f) => (
                 <div key={f.id} className="flex items-center gap-2">
-                  <Avatar path={f.profile.avatar_url} name={f.profile.display_name} size={32} />
+                  <Link to="/u/$id" params={{ id: f.friend_id }}><Avatar path={f.profile.avatar_url} name={f.profile.display_name} size={32} /></Link>
                   <span className="flex-1 truncate text-sm text-foreground">
                     {f.nickname || f.profile.display_name}
                   </span>
@@ -226,7 +226,7 @@ function HomePage() {
               .filter((f) => f.hidden || f.blocked || f.removed)
               .map((f) => (
                 <div key={f.id} className="flex items-center gap-3 rounded-xl px-2 py-2">
-                  <Avatar path={f.profile.avatar_url} name={f.profile.display_name} size={36} />
+                  <Link to="/u/$id" params={{ id: f.friend_id }}><Avatar path={f.profile.avatar_url} name={f.profile.display_name} size={36} /></Link>
                   <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                     {f.nickname || f.profile.display_name}
                     <span className="ml-2 text-[10px] text-muted-foreground">
@@ -313,7 +313,17 @@ function FriendRow({
   return (
     <div className="rounded-xl">
       <button onClick={onToggle} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-muted">
-        <Avatar path={entry.profile.avatar_url} name={entry.profile.display_name} size={44} />
+        <span
+          role="link"
+          tabIndex={0}
+          aria-label="プロフィールを見る"
+          onClick={(e) => {
+            e.stopPropagation();
+            window.location.assign(`/u/${entry.friend_id}`);
+          }}
+        >
+          <Avatar path={entry.profile.avatar_url} name={entry.profile.display_name} size={44} />
+        </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-foreground">
             {entry.nickname || entry.profile.display_name}
