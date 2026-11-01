@@ -184,6 +184,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          description: string | null
           icon_url: string | null
           id: string
           is_group: boolean
@@ -192,6 +193,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          description?: string | null
           icon_url?: string | null
           id?: string
           is_group?: boolean
@@ -200,6 +202,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          description?: string | null
           icon_url?: string | null
           id?: string
           is_group?: boolean
