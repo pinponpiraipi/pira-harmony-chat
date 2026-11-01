@@ -87,3 +87,61 @@ export const adminEditProfile = createServerFn({ method: "POST" })
     if (!rows?.length) throw new Error("アカウントが見つかりませんでした。");
     return { ok: true };
   });
+
+/** Admin-only: edit a group's name, icon and one-line message. */
+export const adminEditGroup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        patch: z.object({
+          name: z.string().min(1).max(60).optional(),
+          icon_url: z.string().max(500).nullable().optional(),
+          description: z.string().max(200).nullable().optional(),
+        }),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const patch = Object.fromEntries(Object.entries(data.patch).filter(([, v]) => v !== undefined));
+    const { error } = await supabaseAdmin.from("conversations").update(patch).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Admin-only: delete a whole chat. */
+export const adminDeleteConversation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: msgs } = await supabaseAdmin.from("messages").select("id").eq("conversation_id", data.id);
+    const ids = (msgs ?? []).map((m) => m.id);
+    if (ids.length) await supabaseAdmin.from("message_reactions").delete().in("message_id", ids);
+    await supabaseAdmin.from("messages").delete().eq("conversation_id", data.id);
+    await supabaseAdmin.from("call_logs").delete().eq("conversation_id", data.id);
+    await supabaseAdmin.from("conversation_members").delete().eq("conversation_id", data.id);
+    const { error } = await supabaseAdmin.from("conversations").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Admin-only: remove someone from a group. */
+export const adminRemoveMember = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ conversationId: z.string().uuid(), userId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("conversation_members")
+      .delete()
+      .eq("conversation_id", data.conversationId)
+      .eq("user_id", data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
