@@ -136,6 +136,8 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     setRoom(null);
     setPhase("idle");
   }, [closeLog]);
+  const cleanupRef = useRef(cleanup);
+  cleanupRef.current = cleanup;
 
   const roomSend = useCallback(
     (event: string, payload: Record<string, unknown>) => {
@@ -164,7 +166,16 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           markAnswered();
           setPhase("live");
         }
-        if (pc.connectionState === "failed" || pc.connectionState === "closed") removePeer(id);
+        if (["failed", "closed", "disconnected"].includes(pc.connectionState)) {
+          const wasDisconnected = pc.connectionState === "disconnected";
+          const drop = () => {
+            removePeer(id);
+            const r = roomRef.current;
+            if (r && r.memberIds.length <= 2 && pcs.current.size === 0 && gotPeer.current) cleanupRef.current();
+          };
+          if (wasDisconnected) setTimeout(() => pc.connectionState === "disconnected" && drop(), 5000);
+          else drop();
+        }
       };
       pcs.current.set(id, pc);
       setPeers((list) => (list.some((p) => p.id === id) ? list : [...list, { id, stream: null }]));
@@ -193,7 +204,22 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       if (!selfId) return;
       setError(null);
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: info.mode === "video" });
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error("このブラウザでは通話できません（https で開いてください）");
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true },
+            video: info.mode === "video" ? { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } : false,
+          });
+        } catch (first) {
+          // Phones sometimes reject detailed constraints or the camera: retry simpler, then audio only.
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: info.mode === "video" });
+          } catch {
+            if (info.mode !== "video") throw first;
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          }
+        }
         streamRef.current = stream;
         setLocalStream(stream);
       } catch (err) {
@@ -284,9 +310,13 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     [selfId, joinRoom, cleanup],
   );
 
-  const hangup = useCallback(() => {
+  const hangup = useCallback(async () => {
     const r = roomRef.current;
-    roomSend("leave", {});
+    try {
+      await chanRef.current?.send({ type: "broadcast", event: "leave", payload: { from: selfId } });
+    } catch {
+      /* ignore */
+    }
     if (r && selfId && !gotPeer.current && phaseRef.current === "calling") {
       r.memberIds
         .filter((id) => id !== selfId)
@@ -400,7 +430,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
             ))}
             {showVideo ? (
               <div
-                className={`relative grid flex-1 gap-1 ${peers.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}
+                className={`relative grid min-h-0 flex-1 gap-1 ${peers.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}
               >
                 {peers.map((p) => (
                   <div key={p.id} className="relative min-h-0 overflow-hidden bg-card">
@@ -443,7 +473,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
               </p>
             )}
             {room.mode === "video" && localStream && phase !== "incoming" && <SelfView stream={localStream} />}
-            <div className="relative flex flex-wrap justify-center gap-3 pb-10 pt-3">
+            <div className="absolute inset-x-0 bottom-0 z-20 flex flex-wrap justify-center gap-3 bg-gradient-to-t from-background/80 to-transparent pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-6">
               {phase === "incoming" && (
                 <PiraButton onClick={accept}>
                   <Phone size={14} /> 応答する
@@ -455,7 +485,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
                   {muted ? "ミュート解除" : "ミュート"}
                 </PiraButton>
               )}
-              <PiraButton variant="danger" onClick={phase === "incoming" ? decline : hangup}>
+              <PiraButton variant="danger" onClick={() => (phase === "incoming" ? decline() : void hangup())}>
                 <PhoneOff size={14} /> {phase === "incoming" ? "拒否" : "終了"}
               </PiraButton>
             </div>
@@ -469,9 +499,12 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 function AudioSink({ stream }: { stream: MediaStream | null }) {
   const ref = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
-    if (ref.current) ref.current.srcObject = stream;
+    const el = ref.current;
+    if (!el) return;
+    el.srcObject = stream;
+    if (stream) void el.play().catch(() => undefined);
   }, [stream]);
-  return <audio ref={ref} autoPlay />;
+  return <audio ref={ref} autoPlay playsInline />;
 }
 
 function VideoTile({ stream }: { stream: MediaStream | null }) {

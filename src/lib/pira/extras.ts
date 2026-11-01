@@ -148,7 +148,12 @@ export const TONE_DEFAULTS: Record<ToneKind, Tone> = {
 
 export function toneFor(s: NotifySettings, kind: ToneKind): Tone {
   const t = s.tones?.[kind];
-  if (t) return { ...TONE_DEFAULTS[kind], ...t };
+  if (t) {
+    const merged = { ...TONE_DEFAULTS[kind], ...t };
+    // The uploaded file from the main sound picker applies to messages unless a per-kind file is set.
+    if (kind === "message" && !merged.sound_url && s.sound_url) merged.sound_url = s.sound_url;
+    return merged;
+  }
   if (kind === "message") return { ...TONE_DEFAULTS.message, sound: s.sound, sound_url: s.sound_url };
   return TONE_DEFAULTS[kind];
 }
