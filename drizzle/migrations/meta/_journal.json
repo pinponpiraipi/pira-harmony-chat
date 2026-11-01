@@ -15,6 +15,13 @@
       "when": 1791418068413,
       "tag": "0001_calls_tones_transcripts",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793524592171,
+      "tag": "0002_group_description",
+      "breakpoints": true
     }
   ]
 }

@@ -3,7 +3,7 @@ import { StoredImage } from "@/components/pira/ui";
 import { useCallback, useEffect, useState } from "react";
 import { ShieldAlert, Ban, Trash2, Save, Eye, Plus, KeyRound } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { adminEditProfile, adminSetPassword, adminListOrphans, adminRestoreOrphan } from "@/lib/pira/admin.functions";
+import { adminEditGroup, adminDeleteConversation, adminEditProfile, adminSetPassword, adminListOrphans, adminRestoreOrphan } from "@/lib/pira/admin.functions";
 import { shrinkImage, uploadMedia } from "@/lib/pira/media";
 import { AppShell } from "@/components/pira/shell";
 import { Avatar, GlassPanel, PiraButton, PiraInput } from "@/components/pira/ui";
@@ -53,6 +53,9 @@ function AdminPage() {
   const editProfileFn = useServerFn(adminEditProfile);
   const listOrphansFn = useServerFn(adminListOrphans);
   const restoreOrphanFn = useServerFn(adminRestoreOrphan);
+  const editGroupFn = useServerFn(adminEditGroup);
+  const deleteConvFn = useServerFn(adminDeleteConversation);
+  const [groupEdit, setGroupEdit] = useState<{ id: string; name: string; description: string } | null>(null);
   const [orphans, setOrphans] = useState<{ id: string; username: string }[]>([]);
   const [flags, setFlags] = useState<AppFlags>({ screen_locked: false, notifications_off: false });
   async function toggleFlag(key: keyof AppFlags) {
@@ -410,6 +413,89 @@ function AdminPage() {
                   一覧
                 </PiraButton>
               </div>
+              {c.is_group && groupEdit?.id !== c.id && (
+                <div className="flex flex-wrap gap-2">
+                  <PiraButton
+                    variant="soft"
+                    onClick={() =>
+                      setGroupEdit({ id: c.id, name: c.name ?? "", description: (c as { description?: string | null }).description ?? "" })
+                    }
+                  >
+                    グループを変更
+                  </PiraButton>
+                  <label className="inline-flex cursor-pointer items-center gap-1 rounded-full glass-soft px-3 py-1.5 text-xs font-semibold text-foreground">
+                    アイコンを変更
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = "";
+                        if (!f || !session) return;
+                        try {
+                          const blob = await shrinkImage(f, 512, "image/webp", 0.85);
+                          const path = await uploadMedia(session.user.id, blob, "webp");
+                          await editGroupFn({ data: { id: c.id, patch: { icon_url: path } } });
+                          setNote("グループのアイコンを変更しました。");
+                          await load();
+                        } catch (err) {
+                          setNote(err instanceof Error ? err.message : String(err));
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              )}
+              {groupEdit?.id === c.id && (
+                <div className="space-y-2">
+                  <PiraInput value={groupEdit.name} onChange={(e) => setGroupEdit({ ...groupEdit, name: e.target.value })} placeholder="グループ名" />
+                  <PiraInput
+                    value={groupEdit.description}
+                    onChange={(e) => setGroupEdit({ ...groupEdit, description: e.target.value })}
+                    placeholder="ひとことメッセージ"
+                  />
+                  <div className="flex gap-2">
+                    <PiraButton
+                      onClick={async () => {
+                        try {
+                          await editGroupFn({
+                            data: {
+                              id: c.id,
+                              patch: { name: groupEdit.name.trim() || c.name || "グループ", description: groupEdit.description.trim() || null },
+                            },
+                          });
+                          setGroupEdit(null);
+                          setNote("グループを変更しました。");
+                          await load();
+                        } catch (err) {
+                          setNote(err instanceof Error ? err.message : String(err));
+                        }
+                      }}
+                    >
+                      <Save size={14} /> 保存
+                    </PiraButton>
+                    <PiraButton variant="ghost" onClick={() => setGroupEdit(null)}>
+                      やめる
+                    </PiraButton>
+                  </div>
+                </div>
+              )}
+              <PiraButton
+                variant="danger"
+                onClick={async () => {
+                  if (!confirm("このトークを完全に削除しますか？元に戻せません。")) return;
+                  try {
+                    await deleteConvFn({ data: { id: c.id } });
+                    setNote("トークを削除しました。");
+                    await load();
+                  } catch (err) {
+                    setNote(err instanceof Error ? err.message : String(err));
+                  }
+                }}
+              >
+                <Trash2 size={14} /> トークを削除
+              </PiraButton>
               {openChat === c.id && (
                 <div className="pira-scroll max-h-64 space-y-1 overflow-y-auto">
                   {messages.length === 0 && (

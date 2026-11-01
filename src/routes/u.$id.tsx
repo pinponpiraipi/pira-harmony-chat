@@ -104,8 +104,8 @@ function ProfilePage() {
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/80" />
       <button
         aria-label="閉じる"
-        onClick={() => (history.length > 1 ? history.back() : void navigate({ to: "/" }))}
-        className="absolute left-4 top-4 rounded-full glass p-2 text-foreground"
+        onClick={() => void navigate({ to: "/" })}
+        className="absolute left-4 top-4 z-10 rounded-full glass p-2 text-foreground"
       >
         <X size={20} />
       </button>

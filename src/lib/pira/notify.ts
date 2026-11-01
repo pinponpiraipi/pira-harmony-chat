@@ -88,13 +88,16 @@ export async function playTone(tone: Tone, volume = 0.6, loop = false) {
   if (tone.sound_url) {
     const url = await resolveMedia(tone.sound_url);
     if (!url) return;
-    const a = new Audio(url);
+    const a = new Audio();
+    a.preload = "auto";
+    a.setAttribute("playsinline", "");
+    a.src = url;
     toneAudio = a;
     a.volume = Math.min(1, Math.max(0, volume));
     const startAt = Math.max(0, tone.start || 0);
     const restart = () => {
       a.currentTime = startAt;
-      void a.play().catch(() => undefined);
+      void a.play().catch(() => playSound(tone.sound, volume));
     };
     a.addEventListener("ended", () => toneAudio === a && restart());
     restart();
@@ -176,4 +179,16 @@ export function notify(
   ) {
     new Notification(title, { body, icon: "/favicon.png" });
   }
+}
+
+// Browsers block sounds until the user has interacted once; unlock audio on the first tap/click.
+if (typeof window !== "undefined") {
+  const unlock = () => {
+    const ac = audio();
+    void ac?.resume();
+    window.removeEventListener("pointerdown", unlock);
+    window.removeEventListener("keydown", unlock);
+  };
+  window.addEventListener("pointerdown", unlock);
+  window.addEventListener("keydown", unlock);
 }
