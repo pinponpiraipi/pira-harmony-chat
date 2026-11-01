@@ -106,7 +106,7 @@ export const adminEditGroup = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const patch = Object.fromEntries(Object.entries(data.patch).filter(([, v]) => v !== undefined));
+    const patch = Object.fromEntries(Object.entries(data.patch).filter(([, v]) => v !== undefined)) as { name?: string; icon_url?: string | null; description?: string | null };
     const { error } = await supabaseAdmin.from("conversations").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
