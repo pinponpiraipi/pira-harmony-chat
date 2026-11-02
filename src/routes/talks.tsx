@@ -137,9 +137,13 @@ function TalksPage() {
                 className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-muted"
               >
                 {c.conversation.is_group ? (
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full glass-soft">
-                    <Users size={18} />
-                  </span>
+                  c.conversation.icon_url ? (
+                    <Avatar path={c.conversation.icon_url} name={title} size={48} />
+                  ) : (
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full glass-soft">
+                      <Users size={18} />
+                    </span>
+                  )
                 ) : (
                   <Avatar path={other?.avatar_url} name={title} size={48} />
                 )}
