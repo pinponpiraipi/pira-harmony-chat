@@ -98,6 +98,7 @@ export const adminEditGroup = createServerFn({ method: "POST" })
         patch: z.object({
           name: z.string().min(1).max(60).optional(),
           icon_url: z.string().max(500).nullable().optional(),
+          cover_url: z.string().max(500).nullable().optional(),
           description: z.string().max(200).nullable().optional(),
         }),
       })
@@ -106,7 +107,7 @@ export const adminEditGroup = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const patch = Object.fromEntries(Object.entries(data.patch).filter(([, v]) => v !== undefined)) as { name?: string; icon_url?: string | null; description?: string | null };
+    const patch = Object.fromEntries(Object.entries(data.patch).filter(([, v]) => v !== undefined)) as { name?: string; icon_url?: string | null; cover_url?: string | null; description?: string | null };
     const { error } = await supabaseAdmin.from("conversations").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };

@@ -453,6 +453,28 @@ function AdminPage() {
                       }}
                     />
                   </label>
+                  <label className="inline-flex cursor-pointer items-center gap-1 rounded-full glass-soft px-3 py-1.5 text-xs font-semibold text-foreground">
+                    背景を変更
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = "";
+                        if (!f || !session) return;
+                        try {
+                          const blob = await shrinkImage(f, 1600, "image/webp", 0.85);
+                          const path = await uploadMedia(session.user.id, blob, "webp");
+                          await editGroupFn({ data: { id: c.id, patch: { cover_url: path } } });
+                          setNote("グループの背景を変更しました。");
+                          await load();
+                        } catch (err) {
+                          setNote(err instanceof Error ? err.message : String(err));
+                        }
+                      }}
+                    />
+                  </label>
                 </div>
               )}
               {groupEdit?.id === c.id && (
