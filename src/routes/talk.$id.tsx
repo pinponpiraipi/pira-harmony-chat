@@ -221,6 +221,19 @@ function TalkPage() {
         ) : null
       }
     >
+      {conversation?.is_group && (
+        <div className="glass mb-3 flex items-center gap-3 rounded-2xl p-3">
+          <Avatar path={conversation.icon_url} name={conversation.name || "グ"} size={44} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-bold text-foreground">{conversation.name || "グループ"}</span>
+            {(conversation as { description?: string | null }).description && (
+              <span className="block truncate text-xs text-muted-foreground">
+                {(conversation as { description?: string | null }).description}
+              </span>
+            )}
+          </span>
+        </div>
+      )}
       {showMembers && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-background/70 px-4">
           <GlassPanel className="w-full max-w-sm space-y-2 p-4">

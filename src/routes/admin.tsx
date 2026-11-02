@@ -400,8 +400,16 @@ function AdminPage() {
           {conversations.map((c) => (
             <div key={c.id} className="glass-soft space-y-2 rounded-xl p-3">
               <div className="flex items-center gap-2">
-                <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                  {c.is_group ? (c.name || "グループ") : "1対1トーク"}・作成者 {nameOf(c.created_by)}
+                {c.is_group && <Avatar path={c.icon_url} name={c.name || "グ"} size={36} />}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm text-foreground">
+                    {c.is_group ? (c.name || "グループ") : "1対1トーク"}・作成者 {nameOf(c.created_by)}
+                  </span>
+                  {c.is_group && (c as { description?: string | null }).description && (
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {(c as { description?: string | null }).description}
+                    </span>
+                  )}
                 </span>
                 <PiraButton
                   variant="soft"
