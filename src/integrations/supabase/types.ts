@@ -182,6 +182,7 @@ export type Database = {
       }
       conversations: {
         Row: {
+          cover_url: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -191,6 +192,7 @@ export type Database = {
           name: string | null
         }
         Insert: {
+          cover_url?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -200,6 +202,7 @@ export type Database = {
           name?: string | null
         }
         Update: {
+          cover_url?: string | null
           created_at?: string
           created_by?: string
           description?: string | null

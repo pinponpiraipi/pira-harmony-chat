@@ -200,14 +200,17 @@ function HomePage() {
           {groups.map((g) => (
             <Link
               key={g.conversation.id}
-              to="/talk/$id"
+              to="/g/$id"
               params={{ id: g.conversation.id }}
-              replace
               className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-muted"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-full glass-soft">
-                <Users size={18} />
-              </span>
+              {g.conversation.icon_url ? (
+                <Avatar path={g.conversation.icon_url} name={g.conversation.name || "グ"} size={44} />
+              ) : (
+                <span className="flex h-11 w-11 items-center justify-center rounded-full glass-soft">
+                  <Users size={18} />
+                </span>
+              )}
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold text-foreground">
                   {g.conversation.name || "グループ"}
