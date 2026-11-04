@@ -121,7 +121,7 @@ export function NotesBar({
   );
 }
 
-function Bubble({ text, mood, muted }: { text: string; mood?: string | null; muted?: boolean }) {
+function Bubble({ text, mood, muted }: { text: string; mood?: string | null | undefined; muted?: boolean | undefined }) {
   return (
     <span
       className={`absolute -top-8 left-1/2 z-10 max-w-28 -translate-x-1/2 truncate rounded-2xl bg-card px-2 py-1 text-[10px] shadow ${
