@@ -380,7 +380,8 @@ function TalkPage() {
                     {mine && !m.deleted_at && (
                       <button
                         className="hover:text-destructive"
-                        onClick={() => void deleteMessage(m.id).then(load)}
+                        title="送信取消（相手の画面からも消えます）"
+                        onClick={() => confirm("送信を取り消しますか？") && void deleteMessage(m.id).then(load)}
                       >
                         <Trash2 size={12} />
                       </button>

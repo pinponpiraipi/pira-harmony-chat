@@ -14,6 +14,7 @@ import { Route as AddRouteImport } from './routes/add'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CallsRouteImport } from './routes/calls'
+import { Route as FeedRouteImport } from './routes/feed'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as StickersRouteImport } from './routes/stickers'
@@ -45,6 +46,11 @@ const AuthRoute = AuthRouteImport.update({
 const CallsRoute = CallsRouteImport.update({
   id: '/calls',
   path: '/calls',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedRoute = FeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/calls': typeof CallsRoute
+  '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/stickers': typeof StickersRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/calls': typeof CallsRoute
+  '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/stickers': typeof StickersRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/calls': typeof CallsRoute
+  '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/stickers': typeof StickersRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/calls'
+    | '/feed'
     | '/settings'
     | '/setup'
     | '/stickers'
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/calls'
+    | '/feed'
     | '/settings'
     | '/setup'
     | '/stickers'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/calls'
+    | '/feed'
     | '/settings'
     | '/setup'
     | '/stickers'
@@ -177,6 +189,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   CallsRoute: typeof CallsRoute
+  FeedRoute: typeof FeedRoute
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
   StickersRoute: typeof StickersRoute
@@ -221,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/calls'
       fullPath: '/calls'
       preLoaderRoute: typeof CallsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feed': {
+      id: '/feed'
+      path: '/feed'
+      fullPath: '/feed'
+      preLoaderRoute: typeof FeedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -281,6 +301,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   CallsRoute: CallsRoute,
+  FeedRoute: FeedRoute,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
   StickersRoute: StickersRoute,

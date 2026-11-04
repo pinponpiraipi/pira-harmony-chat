@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Star, EyeOff, Ban, Trash2, MessageCircle, Cake, Users } from "lucide-react";
 import { AppShell } from "@/components/pira/shell";
+import { NotesBar } from "@/components/pira/notes";
 import { Avatar, GlassPanel, PiraButton, PiraInput } from "@/components/pira/ui";
 import { usePira } from "@/lib/pira/session";
 import {
@@ -116,6 +117,8 @@ function HomePage() {
             </PiraButton>
           </div>
         </GlassPanel>
+
+        <NotesBar userId={session.user.id} me={profile} friends={visible} />
 
         {birthdays.length > 0 && (
           <GlassPanel className="p-4">
