@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { adminRemoveMember } from "@/lib/pira/admin.functions";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Image as ImageIcon, Send, Trash2, Reply, X, Smile, Cake, UserPlus, Users } from "lucide-react";
+import { Image as ImageIcon, Send, Trash2, Reply, X, Smile, Cake, UserPlus, Users, BarChart3, Images, Timer } from "lucide-react";
+import { AlbumView, PollComposer, PollView, VoiceRecorder, VoiceView } from "@/components/pira/talk-extras";
 import { AppShell } from "@/components/pira/shell";
 import {
   Avatar,
@@ -62,6 +63,14 @@ function TalkPage() {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [busy, setBusy] = useState(false);
   const [showStickers, setShowStickers] = useState(false);
+  const [showPoll, setShowPoll] = useState(false);
+  const [showAlbum, setShowAlbum] = useState(false);
+  const [timer, setTimer] = useState(0);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setTick((n) => n + 1), 1000);
+    return () => window.clearInterval(t);
+  }, []);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -145,6 +154,7 @@ function TalkPage() {
         kind: "text",
         body: draft,
         replyTo: replyTo?.id ?? null,
+        expiresInSec: timer || null,
       });
       setDraft("");
       setReplyTo(null);
@@ -165,12 +175,32 @@ function TalkPage() {
         kind: file.type.startsWith("video") ? "video" : "image",
         mediaUrl: path,
         replyTo: replyTo?.id ?? null,
+        expiresInSec: timer || null,
       });
       setReplyTo(null);
       await load();
     } finally {
       setBusy(false);
     }
+  }
+
+  async function sendVoice(blob: Blob) {
+    if (!session) return;
+    setBusy(true);
+    try {
+      const path = await uploadMedia(session.user.id, blob, "webm");
+      await sendMessage({ conversationId: id, senderId: session.user.id, kind: "voice", mediaUrl: path, expiresInSec: timer || null });
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendPoll(p: { q: string; options: string[] }) {
+    if (!session) return;
+    await sendMessage({ conversationId: id, senderId: session.user.id, kind: "poll", body: JSON.stringify(p) });
+    setShowPoll(false);
+    await load();
   }
 
   async function sendSticker(mediaUrl: string) {
@@ -323,7 +353,8 @@ function TalkPage() {
               まだメッセージがありません。
             </p>
           )}
-          {messages.map((m) => {
+          {messages.filter((m) => !m.expires_at || new Date(m.expires_at).getTime() > Date.now()).map((m) => {
+            const left = m.expires_at ? Math.max(0, Math.ceil((new Date(m.expires_at).getTime() - Date.now()) / 1000)) : null;
             const mine = m.sender_id === session?.user.id;
             const author = profileOf(m.sender_id);
             const parent = m.reply_to ? messages.find((x) => x.id === m.reply_to) : null;
@@ -361,6 +392,10 @@ function TalkPage() {
                         alt="スタンプ"
                         className="h-28 w-28 object-contain"
                       />
+                    ) : m.kind === "voice" ? (
+                      <VoiceView path={m.media_url} />
+                    ) : m.kind === "poll" && session ? (
+                      <PollView message={m} userId={session.user.id} />
                     ) : m.kind === "card" ? (
                       <span className="flex flex-col items-center gap-1">
                         <span className="text-2xl">🎂🎈🎉</span>
@@ -373,6 +408,7 @@ function TalkPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
                     <span>{jstTime(m.created_at)}</span>
+                    {left !== null && <span className="text-destructive">⏱{left}秒</span>}
                     {mine && readCount(m) > 0 && <span>既読{readCount(m)}</span>}
                     <button className="hover:text-foreground" onClick={() => setReplyTo(m)}>
                       <Reply size={12} />
@@ -475,6 +511,27 @@ function TalkPage() {
             >
               <Cake size={14} /> お祝いカード
             </PiraButton>
+            <VoiceRecorder onDone={(b) => void sendVoice(b)} />
+            <PiraButton variant="soft" onClick={() => setShowPoll((v) => !v)}>
+              <BarChart3 size={14} /> 投票
+            </PiraButton>
+            <PiraButton variant="soft" onClick={() => setShowAlbum(true)}>
+              <Images size={14} /> アルバム
+            </PiraButton>
+            <label className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Timer size={14} />
+              <select
+                value={timer}
+                onChange={(e) => setTimer(Number(e.target.value))}
+                className="rounded-full bg-muted px-2 py-1 text-foreground"
+                aria-label="時限メッセージ"
+              >
+                <option value={0}>消えない</option>
+                <option value={10}>10秒で消える</option>
+                <option value={60}>1分で消える</option>
+                <option value={3600}>1時間で消える</option>
+              </select>
+            </label>
             <PiraButton
               className="ml-auto"
               disabled={busy || !draft.trim()}
@@ -483,6 +540,8 @@ function TalkPage() {
               <Send size={14} /> 送信
             </PiraButton>
           </div>
+          {showPoll && <PollComposer onSend={(p) => void sendPoll(p)} onClose={() => setShowPoll(false)} />}
+          {showAlbum && <AlbumView messages={messages} onClose={() => setShowAlbum(false)} />}
           {showStickers && (
             <div className="glass-soft rounded-xl">
               <StickerPicker onPick={(s) => void sendSticker(s.media_url)} />

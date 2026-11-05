@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AddRouteImport } from './routes/add'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as BrowserRouteImport } from './routes/browser'
 import { Route as CallsRouteImport } from './routes/calls'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -22,6 +23,7 @@ import { Route as TalksRouteImport } from './routes/talks'
 import { Route as GIdRouteImport } from './routes/g.$id'
 import { Route as TalkIdRouteImport } from './routes/talk.$id'
 import { Route as UIdRouteImport } from './routes/u.$id'
+import { Route as ApiPublicProxyRouteImport } from './routes/api/public/proxy'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -41,6 +43,11 @@ const AdminRoute = AdminRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrowserRoute = BrowserRouteImport.update({
+  id: '/browser',
+  path: '/browser',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CallsRoute = CallsRouteImport.update({
@@ -88,12 +95,18 @@ const UIdRoute = UIdRouteImport.update({
   path: '/u/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicProxyRoute = ApiPublicProxyRouteImport.update({
+  id: '/api/public/proxy',
+  path: '/api/public/proxy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/add': typeof AddRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/browser': typeof BrowserRoute
   '/calls': typeof CallsRoute
   '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
@@ -103,12 +116,14 @@ export interface FileRoutesByFullPath {
   '/g/$id': typeof GIdRoute
   '/talk/$id': typeof TalkIdRoute
   '/u/$id': typeof UIdRoute
+  '/api/public/proxy': typeof ApiPublicProxyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/add': typeof AddRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/browser': typeof BrowserRoute
   '/calls': typeof CallsRoute
   '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
@@ -118,6 +133,7 @@ export interface FileRoutesByTo {
   '/g/$id': typeof GIdRoute
   '/talk/$id': typeof TalkIdRoute
   '/u/$id': typeof UIdRoute
+  '/api/public/proxy': typeof ApiPublicProxyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,6 +141,7 @@ export interface FileRoutesById {
   '/add': typeof AddRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/browser': typeof BrowserRoute
   '/calls': typeof CallsRoute
   '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
@@ -134,6 +151,7 @@ export interface FileRoutesById {
   '/g/$id': typeof GIdRoute
   '/talk/$id': typeof TalkIdRoute
   '/u/$id': typeof UIdRoute
+  '/api/public/proxy': typeof ApiPublicProxyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -142,6 +160,7 @@ export interface FileRouteTypes {
     | '/add'
     | '/admin'
     | '/auth'
+    | '/browser'
     | '/calls'
     | '/feed'
     | '/settings'
@@ -151,12 +170,14 @@ export interface FileRouteTypes {
     | '/g/$id'
     | '/talk/$id'
     | '/u/$id'
+    | '/api/public/proxy'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/add'
     | '/admin'
     | '/auth'
+    | '/browser'
     | '/calls'
     | '/feed'
     | '/settings'
@@ -166,12 +187,14 @@ export interface FileRouteTypes {
     | '/g/$id'
     | '/talk/$id'
     | '/u/$id'
+    | '/api/public/proxy'
   id:
     | '__root__'
     | '/'
     | '/add'
     | '/admin'
     | '/auth'
+    | '/browser'
     | '/calls'
     | '/feed'
     | '/settings'
@@ -181,6 +204,7 @@ export interface FileRouteTypes {
     | '/g/$id'
     | '/talk/$id'
     | '/u/$id'
+    | '/api/public/proxy'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -188,6 +212,7 @@ export interface RootRouteChildren {
   AddRoute: typeof AddRoute
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
+  BrowserRoute: typeof BrowserRoute
   CallsRoute: typeof CallsRoute
   FeedRoute: typeof FeedRoute
   SettingsRoute: typeof SettingsRoute
@@ -197,6 +222,7 @@ export interface RootRouteChildren {
   GIdRoute: typeof GIdRoute
   TalkIdRoute: typeof TalkIdRoute
   UIdRoute: typeof UIdRoute
+  ApiPublicProxyRoute: typeof ApiPublicProxyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -227,6 +253,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/browser': {
+      id: '/browser'
+      path: '/browser'
+      fullPath: '/browser'
+      preLoaderRoute: typeof BrowserRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/calls': {
@@ -292,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/proxy': {
+      id: '/api/public/proxy'
+      path: '/api/public/proxy'
+      fullPath: '/api/public/proxy'
+      preLoaderRoute: typeof ApiPublicProxyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -300,6 +340,7 @@ const rootRouteChildren: RootRouteChildren = {
   AddRoute: AddRoute,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
+  BrowserRoute: BrowserRoute,
   CallsRoute: CallsRoute,
   FeedRoute: FeedRoute,
   SettingsRoute: SettingsRoute,
@@ -309,6 +350,7 @@ const rootRouteChildren: RootRouteChildren = {
   GIdRoute: GIdRoute,
   TalkIdRoute: TalkIdRoute,
   UIdRoute: UIdRoute,
+  ApiPublicProxyRoute: ApiPublicProxyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

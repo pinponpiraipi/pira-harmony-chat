@@ -274,8 +274,10 @@ export async function sendMessage(input: {
   body?: string | null;
   mediaUrl?: string | null;
   replyTo?: string | null;
+  expiresInSec?: number | null;
 }) {
   const { error } = await supabase.from("messages").insert({
+    expires_at: input.expiresInSec ? new Date(Date.now() + input.expiresInSec * 1000).toISOString() : null,
     conversation_id: input.conversationId,
     sender_id: input.senderId,
     kind: input.kind,

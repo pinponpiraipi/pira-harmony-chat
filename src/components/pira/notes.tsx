@@ -78,17 +78,17 @@ export function NotesBar({
 
   return (
     <GlassPanel className="p-3">
-      <div className="flex gap-4 overflow-x-auto pb-1 pt-8">
-        <button className="relative flex shrink-0 flex-col items-center" onClick={() => setEditing(true)}>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        <button className="flex w-24 shrink-0 flex-col items-center gap-1" onClick={() => setEditing(true)}>
           <Bubble text={mine ? mine.body : "＋ノート"} mood={mine?.mood} muted={!mine} />
           <Avatar path={me?.avatar_url} name={me?.display_name ?? "P"} size={52} />
-          <span className="mt-1 text-[10px] text-muted-foreground">自分</span>
+          <span className="text-[10px] text-muted-foreground">自分</span>
         </button>
         {friendNotes.map(({ f, n }) => (
-          <button key={f.id} className="relative flex shrink-0 flex-col items-center" onClick={() => setOpenFor(f)}>
+          <button key={f.id} className="flex w-24 shrink-0 flex-col items-center gap-1" onClick={() => setOpenFor(f)}>
             <Bubble text={n.body} mood={n.mood} />
             <Avatar path={f.profile.avatar_url} name={f.profile.display_name} size={52} />
-            <span className="mt-1 max-w-16 truncate text-[10px] text-muted-foreground">
+            <span className="mt-1 max-w-full truncate text-[10px] text-muted-foreground">
               {f.nickname || f.profile.display_name}
             </span>
           </button>
@@ -123,14 +123,17 @@ export function NotesBar({
 
 function Bubble({ text, mood, muted }: { text: string; mood?: string | null | undefined; muted?: boolean | undefined }) {
   return (
-    <span
-      className={`absolute -top-8 left-1/2 z-10 max-w-28 -translate-x-1/2 truncate rounded-2xl bg-card px-2 py-1 text-[10px] shadow ${
-        muted ? "text-muted-foreground" : "text-foreground"
-      }`}
-      title={mood ? `${text} / ${mood}` : text}
-    >
-      {text}
-      {mood && <span className="block truncate text-[9px] text-muted-foreground">{mood}</span>}
+    <span className="flex h-14 w-full flex-col items-center justify-end gap-0.5" title={mood ? `${text} / ${mood}` : text}>
+      {mood && (
+        <span className="max-w-full truncate rounded-full bg-primary/20 px-1.5 text-[9px] text-foreground">🎵 {mood}</span>
+      )}
+      <span
+        className={`line-clamp-2 max-w-full break-words rounded-2xl bg-card px-2 py-1 text-center text-[10px] leading-tight shadow ${
+          muted ? "text-muted-foreground" : "text-foreground"
+        }`}
+      >
+        {text}
+      </span>
     </span>
   );
 }

@@ -314,6 +314,7 @@ export type Database = {
           conversation_id: string
           created_at: string
           deleted_at: string | null
+          expires_at: string | null
           id: string
           kind: string
           media_url: string | null
@@ -325,6 +326,7 @@ export type Database = {
           conversation_id: string
           created_at?: string
           deleted_at?: string | null
+          expires_at?: string | null
           id?: string
           kind?: string
           media_url?: string | null
@@ -336,6 +338,7 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           deleted_at?: string | null
+          expires_at?: string | null
           id?: string
           kind?: string
           media_url?: string | null
@@ -418,6 +421,35 @@ export type Database = {
           volume?: number
         }
         Relationships: []
+      }
+      poll_votes: {
+        Row: {
+          created_at: string
+          message_id: string
+          option_index: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          message_id: string
+          option_index: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          message_id?: string
+          option_index?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_votes_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       post_comments: {
         Row: {
