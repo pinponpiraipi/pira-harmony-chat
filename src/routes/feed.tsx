@@ -161,7 +161,7 @@ function FeedPage() {
     );
   }
 
-  function CommentBox({ p }: { p: Post }) {
+  function renderComments(p: Post) {
     if (openComments !== p.id) return null;
     return (
       <div className="mt-2 space-y-1">
@@ -229,7 +229,7 @@ function FeedPage() {
                   <p className="text-xs font-bold text-foreground">{people[p.author_id]?.display_name}</p>
                   {p.caption && <p className="text-xs text-foreground">{p.caption}</p>}
                   <Actions p={p} onDark />
-                  <CommentBox p={p} />
+                  {renderComments(p)}
                 </div>
               </div>
             ))}
@@ -248,7 +248,7 @@ function FeedPage() {
               {p.media_type === "video" && <StoredVideo path={p.media_url} className="w-full rounded-2xl" />}
               {p.caption && <p className="whitespace-pre-wrap text-sm text-foreground">{p.caption}</p>}
               <Actions p={p} />
-              <CommentBox p={p} />
+              {renderComments(p)}
             </GlassPanel>
           ))
         )}
