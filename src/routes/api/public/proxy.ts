@@ -368,6 +368,13 @@ async function handle(request: Request) {
   if (!/^[a-z0-9.-]+$/i.test(targetUrl.hostname) || !targetUrl.hostname.includes(".")) {
     return new Response("Invalid host", { status: 400 });
   }
+  if (
+    /^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.)/i.test(targetUrl.hostname) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(targetUrl.hostname) ||
+    /\.(local|internal)$/i.test(targetUrl.hostname)
+  ) {
+    return new Response("Private hosts are not allowed", { status: 400 });
+  }
 
   const upstreamHeaders: Record<string, string> = {
     "user-agent":
