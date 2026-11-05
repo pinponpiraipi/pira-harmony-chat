@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AddRouteImport } from './routes/add'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as BrowserRouteImport } from './routes/browser'
 import { Route as CallsRouteImport } from './routes/calls'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -42,6 +43,11 @@ const AdminRoute = AdminRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrowserRoute = BrowserRouteImport.update({
+  id: '/browser',
+  path: '/browser',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CallsRoute = CallsRouteImport.update({
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/add': typeof AddRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/browser': typeof BrowserRoute
   '/calls': typeof CallsRoute
   '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/add': typeof AddRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/browser': typeof BrowserRoute
   '/calls': typeof CallsRoute
   '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/add': typeof AddRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/browser': typeof BrowserRoute
   '/calls': typeof CallsRoute
   '/feed': typeof FeedRoute
   '/settings': typeof SettingsRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/add'
     | '/admin'
     | '/auth'
+    | '/browser'
     | '/calls'
     | '/feed'
     | '/settings'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/add'
     | '/admin'
     | '/auth'
+    | '/browser'
     | '/calls'
     | '/feed'
     | '/settings'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/add'
     | '/admin'
     | '/auth'
+    | '/browser'
     | '/calls'
     | '/feed'
     | '/settings'
@@ -200,6 +212,7 @@ export interface RootRouteChildren {
   AddRoute: typeof AddRoute
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
+  BrowserRoute: typeof BrowserRoute
   CallsRoute: typeof CallsRoute
   FeedRoute: typeof FeedRoute
   SettingsRoute: typeof SettingsRoute
@@ -240,6 +253,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/browser': {
+      id: '/browser'
+      path: '/browser'
+      fullPath: '/browser'
+      preLoaderRoute: typeof BrowserRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/calls': {
@@ -320,6 +340,7 @@ const rootRouteChildren: RootRouteChildren = {
   AddRoute: AddRoute,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
+  BrowserRoute: BrowserRoute,
   CallsRoute: CallsRoute,
   FeedRoute: FeedRoute,
   SettingsRoute: SettingsRoute,
