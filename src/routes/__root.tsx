@@ -1,3 +1,4 @@
+import { PanicGuard } from "@/components/pira/panic";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -129,6 +130,7 @@ function RootComponent() {
       <PiraProvider>
         {/* Required: nested routes render here. */}
         <Outlet />
+        <PanicGuard />
       </PiraProvider>
     </QueryClientProvider>
   );

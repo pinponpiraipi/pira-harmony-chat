@@ -10,6 +10,7 @@ import {
   Shield,
   Phone,
   Images,
+  Globe,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { usePira } from "@/lib/pira/session";
@@ -30,6 +31,7 @@ const BASE_NAV = [
   { to: "/talks", label: "トーク", icon: MessageCircle },
   { to: "/calls", label: "通話", icon: Phone },
   { to: "/feed", label: "投稿", icon: Images },
+  { to: "/browser", label: "ブラウザ", icon: Globe },
   { to: "/add", label: "友だち", icon: UserPlus },
   { to: "/stickers", label: "スタンプ", icon: Smile },
   { to: "/settings", label: "設定", icon: Settings },
