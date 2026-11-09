@@ -16,30 +16,36 @@ export type Database = {
     Tables: {
       app_settings: {
         Row: {
+          calc_triggers: Json
           cloak_url: string | null
           created_at: string
           id: boolean
           lock_image_url: string | null
+          max_coins_per_question: number
           notifications_off: boolean
           quiet_hours: Json
           screen_locked: boolean
           updated_at: string
         }
         Insert: {
+          calc_triggers?: Json
           cloak_url?: string | null
           created_at?: string
           id?: boolean
           lock_image_url?: string | null
+          max_coins_per_question?: number
           notifications_off?: boolean
           quiet_hours?: Json
           screen_locked?: boolean
           updated_at?: string
         }
         Update: {
+          calc_triggers?: Json
           cloak_url?: string | null
           created_at?: string
           id?: boolean
           lock_image_url?: string | null
+          max_coins_per_question?: number
           notifications_off?: boolean
           quiet_hours?: Json
           screen_locked?: boolean
@@ -71,6 +77,94 @@ export type Database = {
           recipient_id?: string
           sender_id?: string
           year?: number
+        }
+        Relationships: []
+      }
+      calendar_events: {
+        Row: {
+          calendar_id: string
+          created_at: string
+          creator_id: string
+          day: string
+          id: string
+          time_text: string | null
+          title: string
+        }
+        Insert: {
+          calendar_id: string
+          created_at?: string
+          creator_id: string
+          day: string
+          id?: string
+          time_text?: string | null
+          title: string
+        }
+        Update: {
+          calendar_id?: string
+          created_at?: string
+          creator_id?: string
+          day?: string
+          id?: string
+          time_text?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_calendar_id_fkey"
+            columns: ["calendar_id"]
+            isOneToOne: false
+            referencedRelation: "calendars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendar_members: {
+        Row: {
+          calendar_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          calendar_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          calendar_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_members_calendar_id_fkey"
+            columns: ["calendar_id"]
+            isOneToOne: false
+            referencedRelation: "calendars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendars: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
         }
         Relationships: []
       }
@@ -368,6 +462,7 @@ export type Database = {
           created_at: string
           expires_at: string
           mood: string | null
+          music_url: string | null
           user_id: string
         }
         Insert: {
@@ -375,6 +470,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           mood?: string | null
+          music_url?: string | null
           user_id: string
         }
         Update: {
@@ -382,6 +478,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           mood?: string | null
+          music_url?: string | null
           user_id?: string
         }
         Relationships: []
@@ -419,6 +516,51 @@ export type Database = {
           updated_at?: string
           user_id?: string
           volume?: number
+        }
+        Relationships: []
+      }
+      park_sites: {
+        Row: {
+          code: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          height: number
+          icon_size: number
+          icon_url: string | null
+          id: string
+          kind: string
+          name: string
+          url: string | null
+          width: number
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          height?: number
+          icon_size?: number
+          icon_url?: string | null
+          id?: string
+          kind?: string
+          name: string
+          url?: string | null
+          width?: number
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          height?: number
+          icon_size?: number
+          icon_url?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          url?: string | null
+          width?: number
         }
         Relationships: []
       }
@@ -623,6 +765,83 @@ export type Database = {
         }
         Relationships: []
       }
+      study_attempts: {
+        Row: {
+          coins: number
+          correct: boolean
+          created_at: string
+          id: string
+          question_id: string
+          seconds: number
+          user_id: string
+        }
+        Insert: {
+          coins?: number
+          correct: boolean
+          created_at?: string
+          id?: string
+          question_id: string
+          seconds: number
+          user_id: string
+        }
+        Update: {
+          coins?: number
+          correct?: boolean
+          created_at?: string
+          id?: string
+          question_id?: string
+          seconds?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_attempts_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "study_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_questions: {
+        Row: {
+          choices: Json
+          coins: number
+          correct_index: number
+          created_at: string
+          creator_id: string
+          fast_seconds: number
+          id: string
+          question: string
+          slow_coins: number
+          subject: string
+        }
+        Insert: {
+          choices?: Json
+          coins?: number
+          correct_index?: number
+          created_at?: string
+          creator_id: string
+          fast_seconds?: number
+          id?: string
+          question: string
+          slow_coins?: number
+          subject?: string
+        }
+        Update: {
+          choices?: Json
+          coins?: number
+          correct_index?: number
+          created_at?: string
+          creator_id?: string
+          fast_seconds?: number
+          id?: string
+          question?: string
+          slow_coins?: number
+          subject?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -649,10 +868,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      answer_question: {
+        Args: { _choice: number; _question_id: string; _seconds: number }
+        Returns: {
+          coins: number
+          correct: boolean
+          correct_index: number
+        }[]
+      }
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
+      calendar_owner: { Args: { _cal: string }; Returns: string }
+      can_see_calendar: {
+        Args: { _cal: string; _user: string }
+        Returns: boolean
+      }
       can_see_message: {
         Args: { _message_id: string; _user_id: string }
         Returns: boolean
+      }
+      coin_ranking: {
+        Args: { _period: string }
+        Returns: {
+          avatar_url: string
+          coins: number
+          display_name: string
+          user_id: string
+        }[]
       }
       conversation_owner: {
         Args: { _conversation_id: string }
