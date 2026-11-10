@@ -11,6 +11,10 @@ import {
   Phone,
   Images,
   Globe,
+  Wrench,
+  LayoutGrid,
+  GraduationCap,
+  CalendarDays,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { usePira } from "@/lib/pira/session";
@@ -32,6 +36,10 @@ const BASE_NAV = [
   { to: "/calls", label: "通話", icon: Phone },
   { to: "/feed", label: "投稿", icon: Images },
   { to: "/browser", label: "ブラウザ", icon: Globe },
+  { to: "/park", label: "サイトパーク", icon: LayoutGrid },
+  { to: "/study", label: "勉強", icon: GraduationCap },
+  { to: "/calendar", label: "カレンダー", icon: CalendarDays },
+  { to: "/tools", label: "ツール", icon: Wrench },
   { to: "/add", label: "友だち", icon: UserPlus },
   { to: "/stickers", label: "スタンプ", icon: Smile },
   { to: "/settings", label: "設定", icon: Settings },

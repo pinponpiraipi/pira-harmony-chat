@@ -1,3 +1,4 @@
+import { FontPicker } from "@/components/pira/font";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -73,6 +74,11 @@ function SettingsPage() {
         <ProfileSection onNote={setNote} />
 
         <CloakSection onNote={setNote} />
+
+        <GlassPanel className="space-y-2 p-4">
+          <p className="text-sm font-bold text-foreground">フォント</p>
+          <FontPicker />
+        </GlassPanel>
 
         <GlassPanel className="space-y-3 p-4">
           <p className="flex items-center gap-2 text-sm font-bold text-foreground">
