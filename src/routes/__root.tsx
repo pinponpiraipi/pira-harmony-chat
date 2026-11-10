@@ -1,4 +1,6 @@
 import { PanicGuard } from "@/components/pira/panic";
+import { PipHost } from "@/components/pira/pip";
+import { FontApplier } from "@/components/pira/font";
 import type { ErrorComponentProps } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -98,7 +100,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Zen+Maru+Gothic:wght@400;500;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Zen+Maru+Gothic:wght@400;500;700&family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@400;700&display=swap",
       },
     ],
   }),
@@ -131,6 +133,8 @@ function RootComponent() {
         {/* Required: nested routes render here. */}
         <Outlet />
         <PanicGuard />
+        <PipHost />
+        <FontApplier />
       </PiraProvider>
     </QueryClientProvider>
   );

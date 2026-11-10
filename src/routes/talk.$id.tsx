@@ -15,6 +15,7 @@ import {
 } from "@/components/pira/ui";
 import { StickerPicker } from "@/components/pira/stickers";
 import { CallCenter } from "@/components/pira/call";
+import { PipButton } from "@/components/pira/pip";
 import { usePira } from "@/lib/pira/session";
 import {
   deleteMessage,
@@ -246,6 +247,7 @@ function TalkPage() {
                 <UserPlus size={16} />
               </button>
             )}
+            <PipButton />
             <CallCenter conversationId={id} />
           </div>
         ) : null
