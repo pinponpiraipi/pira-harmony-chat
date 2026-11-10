@@ -507,12 +507,70 @@ function AudioSink({ stream }: { stream: MediaStream | null }) {
   return <audio ref={ref} autoPlay playsInline />;
 }
 
+const REMOTE_KEY = "pira-remote-view";
+/** Remote video: drag to move, buttons/wheel to zoom. Only applies on this device. */
 function VideoTile({ stream }: { stream: MediaStream | null }) {
   const ref = useRef<HTMLVideoElement | null>(null);
+  const [v, setV] = useState({ z: 1, x: 0, y: 0, fit: "cover" as "cover" | "contain" });
+  useEffect(() => {
+    try {
+      const s = JSON.parse(window.localStorage.getItem(REMOTE_KEY) ?? "null");
+      if (s && typeof s.z === "number") setV(s);
+    } catch {
+      /* ignore */
+    }
+  }, []);
   useEffect(() => {
     if (ref.current) ref.current.srcObject = stream;
   }, [stream]);
-  return <video ref={ref} autoPlay playsInline muted className="h-full w-full object-cover" />;
+  const save = (n: typeof v) => {
+    setV(n);
+    window.localStorage.setItem(REMOTE_KEY, JSON.stringify(n));
+  };
+  function drag(e: React.PointerEvent) {
+    const sx = e.clientX, sy = e.clientY, st = v;
+    let last = v;
+    const mv = (ev: PointerEvent) => {
+      last = { ...st, x: st.x + ev.clientX - sx, y: st.y + ev.clientY - sy };
+      setV(last);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", mv);
+      window.removeEventListener("pointerup", up);
+      save(last);
+    };
+    window.addEventListener("pointermove", mv);
+    window.addEventListener("pointerup", up);
+  }
+  const zoom = (d: number) => save({ ...v, z: Math.min(4, Math.max(0.3, Math.round((v.z + d) * 10) / 10)) });
+  return (
+    <div
+      className="relative h-full w-full touch-none overflow-hidden"
+      onPointerDown={drag}
+      onWheel={(e) => zoom(e.deltaY < 0 ? 0.1 : -0.1)}
+    >
+      <video
+        ref={ref}
+        autoPlay
+        playsInline
+        muted
+        className="pointer-events-none h-full w-full"
+        style={{ objectFit: v.fit, transform: `translate(${v.x}px, ${v.y}px) scale(${v.z})` }}
+      />
+      <div className="absolute right-2 top-2 flex gap-1" onPointerDown={(e) => e.stopPropagation()}>
+        {[
+          ["−", () => zoom(-0.2)],
+          ["＋", () => zoom(0.2)],
+          [v.fit === "cover" ? "全体" : "拡大", () => save({ ...v, fit: v.fit === "cover" ? "contain" : "cover" })],
+          ["戻す", () => save({ z: 1, x: 0, y: 0, fit: "cover" })],
+        ].map(([l, f]) => (
+          <button key={l as string} onClick={f as () => void} className="rounded-full glass-soft px-2 py-0.5 text-xs text-foreground">
+            {l as string}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /** Your own camera preview. Drag to move, drag the corner to resize; saved on this device only. */
