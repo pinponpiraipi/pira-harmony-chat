@@ -1,3 +1,4 @@
+import { AdminCalcPanel } from "@/components/pira/admin-calc";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { StoredImage } from "@/components/pira/ui";
 import { useCallback, useEffect, useState } from "react";
@@ -221,6 +222,8 @@ function AdminPage() {
             <Save size={14} /> 保存
           </PiraButton>
         </GlassPanel>
+
+        <AdminCalcPanel />
 
         {orphans.length > 0 && (
           <GlassPanel className="space-y-2 p-4">
