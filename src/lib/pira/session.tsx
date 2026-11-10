@@ -18,6 +18,7 @@ import { listChats } from "./db";
 import { setUnreadFavicon } from "./favicon";
 import { StoredImage } from "@/components/pira/ui";
 import { CallProvider } from "@/components/pira/call";
+import { Calculator } from "@/components/pira/calculator";
 import { needsModeChoice, openInBlank, setTabMode, type TabMode } from "./cloak";
 
 export const USERNAME_DOMAIN = "pira.local";
@@ -238,9 +239,44 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
   );
 
   const [choose, setChoose] = useState(false);
+  const [calc, setCalc] = useState(false);
   useEffect(() => {
-    setChoose(needsModeChoice());
+    const need = needsModeChoice();
+    setCalc(need);
   }, []);
+  useEffect(() => {
+    if (!calc) return;
+    const prevTitle = document.title;
+    const set = () => {
+      document.title = "計算機";
+      let el = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+      if (!el) {
+        el = document.createElement("link");
+        el.rel = "icon";
+        document.head.appendChild(el);
+      }
+      el.href = "/tab-calculator.svg";
+    };
+    set();
+    const t = window.setInterval(set, 500);
+    return () => {
+      window.clearInterval(t);
+      document.title = prevTitle;
+    };
+  }, [calc]);
+  function onCalcResult(r: string) {
+    const list = Array.isArray(flags.calc_triggers) ? flags.calc_triggers : [{ code: "810", url: "" }];
+    const hit = list.find((t) => String(t.code).trim() === r);
+    if (!hit) return;
+    if (!hit.url) {
+      setCalc(false);
+      setChoose(true);
+    } else {
+      setCalc(false);
+      openInBlank(hit.url, false);
+      setCalc(true);
+    }
+  }
   function pickMode(m: TabMode, blank: boolean) {
     setTabMode(m);
     setChoose(false);
@@ -252,6 +288,11 @@ export function PiraProvider({ children }: { children: React.ReactNode }) {
   return (
     <PiraContext.Provider value={value}>
       <CallProvider>{children}</CallProvider>
+      {calc && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-background px-4">
+          <Calculator onResult={onCalcResult} />
+        </div>
+      )}
       {choose && !blocked && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-background/80 px-6 backdrop-blur">
           <div className="glass w-full max-w-sm space-y-3 rounded-2xl p-5 text-center">
