@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { Avatar, GlassPanel, PiraButton, PiraInput } from "@/components/pira/ui";
+import { Avatar, GlassPanel, PiraButton, PiraInput, useMediaUrl } from "@/components/pira/ui";
+import { fileExt, uploadMedia } from "@/lib/pira/media";
 import { getOrCreateDirectChat, sendMessage } from "@/lib/pira/db";
 import type { FriendEntry, Profile } from "@/lib/pira/types";
 
@@ -25,7 +26,6 @@ export function NotesBar({
   const [openFor, setOpenFor] = useState<FriendEntry | null>(null);
   const [reply, setReply] = useState("");
   const [song, setSong] = useState<File | null>(null);
-  const [playing, setPlaying] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -105,7 +105,8 @@ export function NotesBar({
         <div className="mt-2 space-y-2">
           <PiraInput value={draft} maxLength={60} onChange={(e) => setDraft(e.target.value)} placeholder="今の一言（60文字・24時間で消えます）" />
           <PiraInput value={mood} maxLength={30} onChange={(e) => setMood(e.target.value)} placeholder="気分・BGM（任意） 例: 🎵 好きな曲" />
-          <div className="flex gap-2">
+          {mine?.music_url && !song && <SongPlayer path={mine.music_url} />}
+          <div className="flex flex-wrap gap-2">
             <label className="cursor-pointer rounded-full glass-soft px-3 py-2 text-xs text-foreground">
               🎵 {song ? song.name.slice(0, 14) : mine?.music_url ? "曲を変更" : "今日の曲をアップロード"}
               <input type="file" accept="audio/*" className="hidden" onChange={(e) => setSong(e.target.files?.[0] ?? null)} />
