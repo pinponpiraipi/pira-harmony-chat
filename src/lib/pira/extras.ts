@@ -226,12 +226,15 @@ export type AppFlags = {
   notifications_off: boolean;
   lock_image_url?: string | null;
   cloak_url?: string | null;
+  calc_triggers?: CalcTrigger[];
+  max_coins_per_question?: number;
 };
+export type CalcTrigger = { code: string; url: string; label?: string };
 
 export async function getAppFlags(): Promise<AppFlags> {
   const { data } = await supabase
     .from("app_settings")
-    .select("screen_locked, notifications_off, lock_image_url, cloak_url")
+    .select("screen_locked, notifications_off, lock_image_url, cloak_url, calc_triggers, max_coins_per_question")
     .eq("id", true)
     .maybeSingle();
   return {
@@ -239,11 +242,13 @@ export async function getAppFlags(): Promise<AppFlags> {
     notifications_off: Boolean(data?.notifications_off),
     lock_image_url: data?.lock_image_url ?? null,
     cloak_url: data?.cloak_url ?? null,
+    calc_triggers: Array.isArray(data?.calc_triggers) ? (data.calc_triggers as unknown as CalcTrigger[]) : [{ code: "810", url: "", label: "PIRA" }],
+    max_coins_per_question: data?.max_coins_per_question ?? 5,
   };
 }
 
 export async function saveAppFlags(patch: Partial<AppFlags>) {
-  const { error } = await supabase.from("app_settings").update(patch).eq("id", true);
+  const { error } = await supabase.from("app_settings").update(patch as never).eq("id", true);
   if (error) throw error;
 }
 

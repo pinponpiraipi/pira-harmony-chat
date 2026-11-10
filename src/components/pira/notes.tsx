@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { Avatar, GlassPanel, PiraButton, PiraInput } from "@/components/pira/ui";
+import { Avatar, GlassPanel, PiraButton, PiraInput, useMediaUrl } from "@/components/pira/ui";
+import { fileExt, uploadMedia } from "@/lib/pira/media";
 import { getOrCreateDirectChat, sendMessage } from "@/lib/pira/db";
 import type { FriendEntry, Profile } from "@/lib/pira/types";
 
-type Note = { user_id: string; body: string; mood: string | null; expires_at: string };
+type Note = { user_id: string; body: string; mood: string | null; expires_at: string; music_url: string | null };
 
 /** Instagram-style 24h note bubbles shown above friend avatars on the home screen. */
 export function NotesBar({
@@ -24,11 +25,12 @@ export function NotesBar({
   const [mood, setMood] = useState("");
   const [openFor, setOpenFor] = useState<FriendEntry | null>(null);
   const [reply, setReply] = useState("");
+  const [song, setSong] = useState<File | null>(null);
 
   const load = useCallback(async () => {
     const { data } = await supabase
       .from("notes")
-      .select("user_id, body, mood, expires_at")
+      .select("user_id, body, mood, expires_at, music_url")
       .gt("expires_at", new Date().toISOString());
     setNotes((data as Note[]) ?? []);
   }, []);
@@ -44,15 +46,19 @@ export function NotesBar({
   async function save() {
     const body = draft.trim().slice(0, 60);
     if (!body) return;
+    let music_url = mine?.music_url ?? null;
+    if (song) music_url = await uploadMedia(userId, song, fileExt(song));
     await supabase.from("notes").upsert({
       user_id: userId,
       body,
       mood: mood.trim() || null,
+      music_url,
       created_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 24 * 3600_000).toISOString(),
     });
     setEditing(false);
     setDraft("");
+    setSong(null);
     void load();
   }
 
@@ -99,7 +105,12 @@ export function NotesBar({
         <div className="mt-2 space-y-2">
           <PiraInput value={draft} maxLength={60} onChange={(e) => setDraft(e.target.value)} placeholder="今の一言（60文字・24時間で消えます）" />
           <PiraInput value={mood} maxLength={30} onChange={(e) => setMood(e.target.value)} placeholder="気分・BGM（任意） 例: 🎵 好きな曲" />
-          <div className="flex gap-2">
+          {mine?.music_url && !song && <SongPlayer path={mine.music_url} />}
+          <div className="flex flex-wrap gap-2">
+            <label className="cursor-pointer rounded-full glass-soft px-3 py-2 text-xs text-foreground">
+              🎵 {song ? song.name.slice(0, 14) : mine?.music_url ? "曲を変更" : "今日の曲をアップロード"}
+              <input type="file" accept="audio/*" className="hidden" onChange={(e) => setSong(e.target.files?.[0] ?? null)} />
+            </label>
             <PiraButton onClick={() => void save()}>シェア</PiraButton>
             {mine && <PiraButton variant="soft" onClick={() => void remove()}>削除</PiraButton>}
             <PiraButton variant="soft" onClick={() => setEditing(false)}>閉じる</PiraButton>
@@ -110,6 +121,10 @@ export function NotesBar({
       {openFor && (
         <div className="mt-2 space-y-2">
           <p className="text-xs text-muted-foreground">{openFor.nickname || openFor.profile.display_name} に返信</p>
+          {(() => {
+            const m = notes.find((x) => x.user_id === openFor.friend_id)?.music_url;
+            return m ? <SongPlayer path={m} /> : null;
+          })()}
           <div className="flex gap-2">
             <PiraInput value={reply} onChange={(e) => setReply(e.target.value)} placeholder="メッセージを送る" />
             <PiraButton onClick={() => void sendReply()}>送信</PiraButton>
@@ -135,5 +150,16 @@ function Bubble({ text, mood, muted }: { text: string; mood?: string | null | un
         {text}
       </span>
     </span>
+  );
+}
+
+function SongPlayer({ path }: { path: string }) {
+  const url = useMediaUrl(path);
+  if (!url) return null;
+  return (
+    <div className="flex items-center gap-2 text-xs text-foreground">
+      🎵 今日の曲
+      <audio src={url} controls className="h-8 flex-1" />
+    </div>
   );
 }
