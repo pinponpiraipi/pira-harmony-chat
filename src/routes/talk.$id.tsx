@@ -248,6 +248,7 @@ function TalkPage() {
               </button>
             )}
             <PipButton />
+            <PipButton />
             <CallCenter conversationId={id} />
           </div>
         ) : null
